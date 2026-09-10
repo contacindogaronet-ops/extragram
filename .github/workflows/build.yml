@@ -26,8 +26,8 @@ jobs:
         run: |
           cat << EOT > API_KEYS
           APP_ID=${APP_ID}
-          APP_HASH=${APP_HASH}
-          MAPS_V2_API=${MAPS_V2_API}
+          APP_HASH="${APP_HASH}"
+          MAPS_V2_API="${MAPS_V2_API}"
           EOT
 
       - name: Setup Java JDK 17
