@@ -15,6 +15,11 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Force Sync & Init Submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive --force
+
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -46,7 +51,7 @@ jobs:
       - name: Build APK with Gradle (ARM64 Only)
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx4096m -Xss4m -XX:+UseG1GC'"
-        run: ./gradlew :TMessagesProj:assembleAfatRelease -PabiList=arm64-v8a --no-configuration-cache --stacktrace
+        run: ./gradlew :TMessagesProj:clean :TMessagesProj:assembleAfatRelease -PabiList=arm64-v8a --no-configuration-cache --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
