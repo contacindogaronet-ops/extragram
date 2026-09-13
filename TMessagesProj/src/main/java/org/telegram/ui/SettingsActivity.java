@@ -188,7 +188,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
     private View navigationBar;
 
     private int versionViewPressCount = 0;
-    private int networkOptimizationRow;
+    private static final int networkOptimizationRow = 150;
 
     public SettingsActivity() {
         this(null);
@@ -832,7 +832,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             case 8:
                 presentSettingFragment(new SessionsActivity(0));
                 break;
-            case networkOptimizationRow:
+            case 150:
                 presentFragment(new NetworkOptimizationActivity());
                 break;
             case 9:
