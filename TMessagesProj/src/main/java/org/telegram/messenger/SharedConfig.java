@@ -98,7 +98,9 @@ public class SharedConfig {
             });
         }
     }
-
+    public static int socketBufferSize = 65536;
+    public static boolean tcpNoDelay = true;
+    public static boolean aggressiveTearDown = true;
     static Boolean allowPreparingHevcPlayers;
 
     public static boolean allowPreparingHevcPlayers() {
@@ -443,6 +445,9 @@ public class SharedConfig {
                 editor.putInt("lastPauseTime", lastPauseTime);
                 editor.putBoolean("useFingerprint", useFingerprintLock);
                 editor.putBoolean("allowScreenCapture", allowScreenCapture);
+                editor.putInt("socketBufferSize", socketBufferSize);
+                editor.putBoolean("tcpNoDelay", tcpNoDelay);
+                editor.putBoolean("aggressiveTearDown", aggressiveTearDown);
                 editor.putString("pushString2", pushString);
                 editor.putInt("pushType", pushType);
                 editor.putBoolean("pushStatSent", pushStatSent);
@@ -521,6 +526,9 @@ public class SharedConfig {
             lastPauseTime = preferences.getInt("lastPauseTime", 0);
             useFingerprintLock = preferences.getBoolean("useFingerprint", true);
             allowScreenCapture = preferences.getBoolean("allowScreenCapture", false);
+            socketBufferSize = preferences.getInt("socketBufferSize", 65536);
+            tcpNoDelay = preferences.getBoolean("tcpNoDelay", true);
+            aggressiveTearDown = preferences.getBoolean("aggressiveTearDown", true);
             lastLocalId = preferences.getInt("lastLocalId", -210000);
             pushString = preferences.getString("pushString2", "");
             pushType = preferences.getInt("pushType", PushListenerController.PUSH_TYPE_FIREBASE);
