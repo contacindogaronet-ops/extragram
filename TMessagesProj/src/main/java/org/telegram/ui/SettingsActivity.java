@@ -739,7 +739,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
         items.add(SettingCell.Factory.of(networkOptimizationRow,
             IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom,
-            R.drawable.msg_settings, R.string.NetworkStreamOptimization,
+            R.drawable.msg_settings, getString(R.string.NetworkStreamOptimization),
             SharedConfig.isNetworkOptimizationEnabled() ? "On" : "Off"));
         items.add(UItem.asHeader(getString(R.string.SettingsHelp)));
         items.add(SettingCell.Factory.of(17, IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom, R.drawable.settings_ask, getString(R.string.AskAQuestion)));
