@@ -737,7 +737,10 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         if (items.get(items.size() - 1).viewType != UniversalAdapter.VIEW_TYPE_SHADOW)
             items.add(UItem.asShadow(null));
 
-        items.add(SettingCell.Factory.of(networkOptimizationRow, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.msg_settings, getString(R.string.NetworkStreamOptimization), SharedConfig.isNetworkOptimizationEnabled()));
+        items.add(SettingCell.Factory.of(networkOptimizationRow,
+            IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom,
+            R.drawable.msg_settings, R.string.NetworkStreamOptimization,
+            SharedConfig.isNetworkOptimizationEnabled() ? "On" : "Off"));
         items.add(UItem.asHeader(getString(R.string.SettingsHelp)));
         items.add(SettingCell.Factory.of(17, IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom, R.drawable.settings_ask, getString(R.string.AskAQuestion)));
         items.add(SettingCell.Factory.of(18, IconBackgroundColors.BLUE_LIGHT.top, IconBackgroundColors.BLUE_LIGHT.bottom, R.drawable.settings_faq, getString(R.string.TelegramFAQ)));
