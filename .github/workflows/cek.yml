@@ -26,4 +26,4 @@ jobs:
         run: chmod +x gradlew
 
       - name: Compile Java Check
-        run: ./gradlew :TMessagesProj:compileAfatReleaseJavaWithJavac --no-daemon
+        run: ./gradlew :TMessagesProj:compileReleaseJavaWithJavac --no-daemon
