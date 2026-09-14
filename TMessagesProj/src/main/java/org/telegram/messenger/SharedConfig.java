@@ -294,6 +294,7 @@ public class SharedConfig {
     public static boolean roundCamera16to9 = true;
     public static boolean noSoundHintShowed = false;
     public static boolean streamMedia = true;
+    public static boolean networkOptimizationEnabled = true;
     public static boolean streamAllVideo = false;
     public static boolean streamMkv = false;
     public static boolean saveStreamMedia = true;
@@ -529,6 +530,7 @@ public class SharedConfig {
             socketBufferSize = preferences.getInt("socketBufferSize", 65536);
             tcpNoDelay = preferences.getBoolean("tcpNoDelay", true);
             aggressiveTearDown = preferences.getBoolean("aggressiveTearDown", true);
+            networkOptimizationEnabled = preferences.getBoolean("networkOptimizationEnabled", true);
             lastLocalId = preferences.getInt("lastLocalId", -210000);
             pushString = preferences.getString("pushString2", "");
             pushType = preferences.getInt("pushType", PushListenerController.PUSH_TYPE_FIREBASE);
@@ -748,6 +750,17 @@ public class SharedConfig {
 
     public static boolean isPassportConfigLoaded() {
         return passportConfigMap != null;
+    }
+    public static boolean isNetworkOptimizationEnabled() {
+        return networkOptimizationEnabled;
+    }
+
+    public static void toggleNetworkOptimization() {
+        networkOptimizationEnabled = !networkOptimizationEnabled;
+        SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("mainconfig", Activity.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean("networkOptimizationEnabled", networkOptimizationEnabled);
+        editor.apply();
     }
 
     public static void setPassportConfig(String json, int hash) {
