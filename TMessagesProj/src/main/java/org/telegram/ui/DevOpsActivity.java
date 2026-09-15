@@ -38,7 +38,15 @@ public class DevOpsActivity extends BaseFragment {
         RecyclerListView listView = new RecyclerListView(context);
         listView.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
 
-        adapter = new UniversalAdapter(listView, context, currentAccount, 0, this::fillItems, this::onRowClick);
+        // Memaksa resolusi tipe ke Utilities.Callback5 milik Telegram
+        adapter = new UniversalAdapter(
+            listView,
+            context,
+            currentAccount,
+            0,
+            this::fillItems,
+            (item, view, position, x, y) -> onRowClick(item, view, position, x, y)
+        );
         listView.setAdapter(adapter);
 
         fragmentView = listView;
@@ -65,8 +73,11 @@ public class DevOpsActivity extends BaseFragment {
         items.add(UItem.asButton(208, "Build Commit Hash", BuildVars.BUILD_GIT_HASH));
     }
 
-    private void onRowClick(int id) {
-        switch (id) {
+    // Tipe dan jumlah parameter wajib persis 5 (UItem, View, int, float, float)
+    private void onRowClick(UItem item, View view, int position, float x, float y) {
+        if (item == null) return;
+
+        switch (item.id) {
             case 201:
                 SharedConfig.toggleSqliteSyncMode();
                 if (adapter != null) adapter.update(true);
