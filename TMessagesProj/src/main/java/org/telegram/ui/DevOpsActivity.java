@@ -166,7 +166,7 @@ public class DevOpsActivity extends BaseFragment {
 
                     AndroidUtilities.runOnUIThread(() -> {
                         if (getParentActivity() != null) {
-                            Toast.makeText(getParentActivity(), "Latest Version: " + tagName, Toast.Long_LONG).show();
+                            Toast.makeText(getParentActivity(), "Latest Version: " + tagName, Toast.LENGTH_LONG).show();
                             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(htmlUrl));
                             getParentActivity().startActivity(browserIntent);
                         }
