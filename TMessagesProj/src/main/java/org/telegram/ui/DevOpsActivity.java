@@ -93,8 +93,6 @@ public class DevOpsActivity extends BaseFragment {
                     break;
 
                 case 301:
-                    // Toggle Bypass Protected Content (Save/Forward restriction)
-                    // Implementasi flag SharedPreferences / SharedConfig kustom
                     Toast.makeText(getParentActivity(), "Protected Content Bypass Toggled", Toast.LENGTH_SHORT).show();
                     break;
 
@@ -145,13 +143,15 @@ public class DevOpsActivity extends BaseFragment {
     private void checkForUpdates() {
         Toast.makeText(getParentActivity(), "Checking GitHub Releases...", Toast.LENGTH_SHORT).show();
         org.telegram.messenger.Utilities.globalQueue.postRunnable(() -> {
+            HttpURLConnection conn = null;
             try {
                 URL url = new URL("https://api.github.com/repos/contacindogaronet-ops/exteraGram/releases/latest");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("User-Agent", "Telegram-Android-DevOps");
                 
-                if (conn.getResponseCode() == 200) {
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200) {
                     BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                     StringBuilder result = new StringBuilder();
                     String line;
@@ -172,8 +172,9 @@ public class DevOpsActivity extends BaseFragment {
                         }
                     });
                 } else {
+                    final int finalResponseCode = responseCode;
                     AndroidUtilities.runOnUIThread(() -> 
-                        Toast.makeText(getParentActivity(), "Failed to check updates (HTTP " + conn.getResponseCode() + ")", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(getParentActivity(), "Failed to check updates (HTTP " + finalResponseCode + ")", Toast.LENGTH_SHORT).show()
                     );
                 }
             } catch (Exception e) {
@@ -181,6 +182,12 @@ public class DevOpsActivity extends BaseFragment {
                 AndroidUtilities.runOnUIThread(() -> 
                     Toast.makeText(getParentActivity(), "Error checking updates. Check connection.", Toast.LENGTH_SHORT).show()
                 );
+            } finally {
+                if (conn != null) {
+                    try {
+                        conn.disconnect();
+                    } catch (Exception ignored) {}
+                }
             }
         });
     }
