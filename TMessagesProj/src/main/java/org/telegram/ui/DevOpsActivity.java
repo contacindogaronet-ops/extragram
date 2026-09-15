@@ -38,7 +38,8 @@ public class DevOpsActivity extends BaseFragment {
         RecyclerListView listView = new RecyclerListView(context);
         listView.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
 
-        adapter = new UniversalAdapter(listView, context, currentAccount, 0, true, this::fillItems, this::onItemClick);
+        // Hapus boolean `true` dari constructor di bawah ini
+        adapter = new UniversalAdapter(listView, context, currentAccount, 0, this::fillItems, this::onItemClick);
         listView.setAdapter(adapter);
 
         fragmentView = listView;
