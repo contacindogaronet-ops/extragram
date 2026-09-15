@@ -65,6 +65,7 @@ public class DevOpsActivity extends BaseFragment {
         items.add(UItem.asButton(208, "Build Commit Hash", BuildVars.BUILD_GIT_HASH));
     }
 
+    // METHOD INI WAJIB MEMILIKI 5 PARAMETER SESUAI CALLBACK UNIVERSALADAPTER
     private void onRowClick(UItem item, View view, int position, float x, float y) {
         if (item == null) return;
 
