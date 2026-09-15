@@ -38,16 +38,55 @@ public class DevOpsActivity extends BaseFragment {
         RecyclerListView listView = new RecyclerListView(context);
         listView.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
 
-        // Memaksa resolusi tipe ke Utilities.Callback5 milik Telegram
-        adapter = new UniversalAdapter(
-            listView,
-            context,
-            currentAccount,
-            0,
-            this::fillItems,
-            (item, view, position, x, y) -> onRowClick(item, view, position, x, y)
-        );
+        adapter = new UniversalAdapter(listView, context, currentAccount, 0, this::fillItems, null);
         listView.setAdapter(adapter);
+
+        listView.setOnItemClickListener((view, position) -> {
+            UItem item = adapter.getItem(position);
+            if (item == null) return;
+
+            switch (item.id) {
+                case 201:
+                    SharedConfig.toggleSqliteSyncMode();
+                    if (adapter != null) adapter.update(true);
+                    Toast.makeText(getParentActivity(), "SQLite Sync Mode: " + SharedConfig.getSqliteSyncMode(), Toast.LENGTH_SHORT).show();
+                    break;
+
+                case 202:
+                    SharedConfig.toggleSqliteWal();
+                    if (adapter != null) adapter.update(true);
+                    Toast.makeText(getParentActivity(), "SQLite WAL Mode: " + (SharedConfig.isSqliteWalEnabled() ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
+                    break;
+
+                case 203:
+                    getMessagesStorage().getStorageQueue().postRunnable(() -> {
+                        try {
+                            getMessagesStorage().getDatabase().executeFast("VACUUM;").stepThis().dispose();
+                            getMessagesStorage().getDatabase().executeFast("PRAGMA integrity_check;").stepThis().dispose();
+                        } catch (Exception e) {
+                            FileLog.e(e);
+                        }
+                    });
+                    Toast.makeText(getParentActivity(), "Database Maintenance (VACUUM) Executed", Toast.LENGTH_SHORT).show();
+                    break;
+
+                case 204:
+                    System.gc();
+                    System.runFinalization();
+                    Toast.makeText(getParentActivity(), "RAM Cleared & GC Triggered", Toast.LENGTH_SHORT).show();
+                    break;
+
+                case 205:
+                    getConnectionsManager().checkConnection();
+                    Toast.makeText(getParentActivity(), "MTProto Connection Re-initialized", Toast.LENGTH_SHORT).show();
+                    break;
+
+                case 208:
+                    AndroidUtilities.addToClipboard(BuildVars.BUILD_GIT_HASH);
+                    Toast.makeText(getParentActivity(), "Commit Hash Copied: " + BuildVars.BUILD_GIT_HASH, Toast.LENGTH_SHORT).show();
+                    break;
+            }
+        });
 
         fragmentView = listView;
         return fragmentView;
@@ -71,52 +110,5 @@ public class DevOpsActivity extends BaseFragment {
         items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Build Information"));
         items.add(UItem.asButton(208, "Build Commit Hash", BuildVars.BUILD_GIT_HASH));
-    }
-
-    // Tipe dan jumlah parameter wajib persis 5 (UItem, View, int, float, float)
-    private void onRowClick(UItem item, View view, int position, float x, float y) {
-        if (item == null) return;
-
-        switch (item.id) {
-            case 201:
-                SharedConfig.toggleSqliteSyncMode();
-                if (adapter != null) adapter.update(true);
-                Toast.makeText(getParentActivity(), "SQLite Sync Mode: " + SharedConfig.getSqliteSyncMode(), Toast.LENGTH_SHORT).show();
-                break;
-
-            case 202:
-                SharedConfig.toggleSqliteWal();
-                if (adapter != null) adapter.update(true);
-                Toast.makeText(getParentActivity(), "SQLite WAL Mode: " + (SharedConfig.isSqliteWalEnabled() ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
-                break;
-
-            case 203:
-                getMessagesStorage().getStorageQueue().postRunnable(() -> {
-                    try {
-                        getMessagesStorage().getDatabase().executeFast("VACUUM;").stepThis().dispose();
-                        getMessagesStorage().getDatabase().executeFast("PRAGMA integrity_check;").stepThis().dispose();
-                    } catch (Exception e) {
-                        FileLog.e(e);
-                    }
-                });
-                Toast.makeText(getParentActivity(), "Database Maintenance (VACUUM) Executed", Toast.LENGTH_SHORT).show();
-                break;
-
-            case 204:
-                System.gc();
-                System.runFinalization();
-                Toast.makeText(getParentActivity(), "RAM Cleared & GC Triggered", Toast.LENGTH_SHORT).show();
-                break;
-
-            case 205:
-                getConnectionsManager().checkConnection();
-                Toast.makeText(getParentActivity(), "MTProto Connection Re-initialized", Toast.LENGTH_SHORT).show();
-                break;
-
-            case 208:
-                AndroidUtilities.addToClipboard(BuildVars.BUILD_GIT_HASH);
-                Toast.makeText(getParentActivity(), "Commit Hash Copied: " + BuildVars.BUILD_GIT_HASH, Toast.LENGTH_SHORT).show();
-                break;
-        }
     }
 }
