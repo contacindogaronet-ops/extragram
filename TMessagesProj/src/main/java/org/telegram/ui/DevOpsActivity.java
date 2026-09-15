@@ -38,8 +38,7 @@ public class DevOpsActivity extends BaseFragment {
         RecyclerListView listView = new RecyclerListView(context);
         listView.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
 
-        // Menggunakan Lambda eksplisit untuk menghindari mismatch signature
-        adapter = new UniversalAdapter(listView, context, currentAccount, 0, this::fillItems, (item, view) -> onRowClick(item, view));
+        adapter = new UniversalAdapter(listView, context, currentAccount, 0, this::fillItems, this::onRowClick);
         listView.setAdapter(adapter);
 
         fragmentView = listView;
@@ -66,7 +65,7 @@ public class DevOpsActivity extends BaseFragment {
         items.add(UItem.asButton(208, "Build Commit Hash", BuildVars.BUILD_GIT_HASH));
     }
 
-    private void onRowClick(UItem item, View view) {
+    private void onRowClick(UItem item, View view, int position, float x, float y) {
         if (item == null) return;
 
         switch (item.id) {
