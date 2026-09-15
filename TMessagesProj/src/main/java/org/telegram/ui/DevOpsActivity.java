@@ -48,7 +48,11 @@ public class DevOpsActivity extends BaseFragment {
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         items.add(UItem.asHeader("Database Engine"));
         items.add(UItem.asButton(201, "SQLite Sync Mode", SharedConfig.getSqliteSyncMode()));
-        items.add(UItem.asCheck(202, "SQLite WAL Mode", SharedConfig.isSqliteWalEnabled()));
+
+        UItem walItem = UItem.asCheck(202, "SQLite WAL Mode");
+        walItem.checked = SharedConfig.isSqliteWalEnabled();
+        items.add(walItem);
+
         items.add(UItem.asButton(203, "Database Maintenance", "VACUUM"));
 
         items.add(UItem.asShadow(null));
@@ -61,7 +65,7 @@ public class DevOpsActivity extends BaseFragment {
         items.add(UItem.asButton(208, "Build Commit Hash", BuildVars.BUILD_GIT_HASH));
     }
 
-    private void onItemClick(UItem item, View view, int position, float x, float y) {
+    private void onItemClick(UItem item, View view) {
         if (item == null) return;
 
         switch (item.id) {
