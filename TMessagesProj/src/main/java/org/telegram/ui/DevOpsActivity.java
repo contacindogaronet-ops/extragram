@@ -38,7 +38,7 @@ public class DevOpsActivity extends BaseFragment {
         RecyclerListView listView = new RecyclerListView(context);
         listView.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
 
-        adapter = new UniversalAdapter(listView, context, currentAccount, 0, true, this::fillItems, this::onClick);
+        adapter = new UniversalAdapter(listView, context, currentAccount, 0, true, this::fillItems, this::onItemClick);
         listView.setAdapter(adapter);
 
         fragmentView = listView;
@@ -47,39 +47,23 @@ public class DevOpsActivity extends BaseFragment {
 
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         items.add(UItem.asHeader("Database Engine"));
-        items.add(SettingCell.Factory.of(201,
-            IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom,
-            R.drawable.msg_storage, "SQLite Sync Mode",
-            SharedConfig.getSqliteSyncMode()));
-
-        items.add(SettingCell.Factory.of(202,
-            IconBackgroundColors.GREEN.top, IconBackgroundColors.GREEN.bottom,
-            R.drawable.msg_folders, "SQLite WAL Mode",
-            SharedConfig.isSqliteWalEnabled() ? "On" : "Off"));
-
-        items.add(SettingCell.Factory.of(203,
-            IconBackgroundColors.PURPLE.top, IconBackgroundColors.PURPLE.bottom,
-            R.drawable.msg_clear, "Database Maintenance", "VACUUM"));
+        items.add(UItem.asButton(201, "SQLite Sync Mode", SharedConfig.getSqliteSyncMode()));
+        items.add(UItem.asCheck(202, "SQLite WAL Mode", SharedConfig.isSqliteWalEnabled()));
+        items.add(UItem.asButton(203, "Database Maintenance", "VACUUM"));
 
         items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Memory & Engine"));
-        items.add(SettingCell.Factory.of(204,
-            IconBackgroundColors.RED.top, IconBackgroundColors.RED.bottom,
-            R.drawable.msg_reset, "Purge RAM & Native GC", "Run"));
-
-        items.add(SettingCell.Factory.of(205,
-            IconBackgroundColors.BLUE_ALT.top, IconBackgroundColors.BLUE_ALT.bottom,
-            R.drawable.msg_retry, "Restart MTProto Daemon", "Reset"));
+        items.add(UItem.asButton(204, "Purge RAM & Native GC", "Run"));
+        items.add(UItem.asButton(205, "Restart MTProto Daemon", "Reset"));
 
         items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Build Information"));
-        items.add(SettingCell.Factory.of(208,
-            IconBackgroundColors.CYAN.top, IconBackgroundColors.CYAN.bottom,
-            R.drawable.msg_about, "Build Commit Hash",
-            BuildVars.BUILD_GIT_HASH));
+        items.add(UItem.asButton(208, "Build Commit Hash", BuildVars.BUILD_GIT_HASH));
     }
 
-    private void onClick(UItem item, View view, int position, float x, float y) {
+    private void onItemClick(UItem item, View view, int position, float x, float y) {
+        if (item == null) return;
+
         switch (item.id) {
             case 201:
                 SharedConfig.toggleSqliteSyncMode();
@@ -112,8 +96,7 @@ public class DevOpsActivity extends BaseFragment {
                 break;
 
             case 205:
-                getConnectionsManager().getDatacenterWithId(getConnectionsManager().getCurrentDatacenterId());
-                getConnectionsManager().resumeNetwork();
+                getConnectionsManager().checkConnection();
                 Toast.makeText(getParentActivity(), "MTProto Connection Re-initialized", Toast.LENGTH_SHORT).show();
                 break;
 
