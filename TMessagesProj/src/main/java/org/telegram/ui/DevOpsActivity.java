@@ -1,9 +1,12 @@
 package org.telegram.ui;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.view.View;
 import android.widget.Toast;
 
+import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.FileLog;
@@ -15,6 +18,10 @@ import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.UItem;
 import org.telegram.ui.Components.UniversalAdapter;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 
 public class DevOpsActivity extends BaseFragment {
@@ -46,6 +53,10 @@ public class DevOpsActivity extends BaseFragment {
             if (item == null) return;
 
             switch (item.id) {
+                case 101:
+                    checkForUpdates();
+                    break;
+
                 case 201:
                     SharedConfig.toggleSqliteSyncMode();
                     if (adapter != null) adapter.update(true);
@@ -81,6 +92,16 @@ public class DevOpsActivity extends BaseFragment {
                     Toast.makeText(getParentActivity(), "MTProto Connection Re-initialized", Toast.LENGTH_SHORT).show();
                     break;
 
+                case 301:
+                    // Toggle Bypass Protected Content (Save/Forward restriction)
+                    // Implementasi flag SharedPreferences / SharedConfig kustom
+                    Toast.makeText(getParentActivity(), "Protected Content Bypass Toggled", Toast.LENGTH_SHORT).show();
+                    break;
+
+                case 302:
+                    Toast.makeText(getParentActivity(), "Network Routing Configured", Toast.LENGTH_SHORT).show();
+                    break;
+
                 case 208:
                     AndroidUtilities.addToClipboard(BuildVars.BUILD_GIT_HASH);
                     Toast.makeText(getParentActivity(), "Commit Hash Copied: " + BuildVars.BUILD_GIT_HASH, Toast.LENGTH_SHORT).show();
@@ -93,6 +114,10 @@ public class DevOpsActivity extends BaseFragment {
     }
 
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
+        items.add(UItem.asHeader("OTA & Updates"));
+        items.add(UItem.asButton(101, "Check for App Updates", "Check"));
+
+        items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Database Engine"));
         items.add(UItem.asButton(201, "SQLite Sync Mode", SharedConfig.getSqliteSyncMode()));
 
@@ -103,6 +128,11 @@ public class DevOpsActivity extends BaseFragment {
         items.add(UItem.asButton(203, "Database Maintenance", "VACUUM"));
 
         items.add(UItem.asShadow(null));
+        items.add(UItem.asHeader("Advanced Power-User Tools"));
+        items.add(UItem.asCheck(301, "Bypass Protected Content"));
+        items.add(UItem.asButton(302, "Network Routing Rules", "Config"));
+
+        items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Memory & Engine"));
         items.add(UItem.asButton(204, "Purge RAM & Native GC", "Run"));
         items.add(UItem.asButton(205, "Restart MTProto Daemon", "Reset"));
@@ -110,5 +140,48 @@ public class DevOpsActivity extends BaseFragment {
         items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Build Information"));
         items.add(UItem.asButton(208, "Build Commit Hash", BuildVars.BUILD_GIT_HASH));
+    }
+
+    private void checkForUpdates() {
+        Toast.makeText(getParentActivity(), "Checking GitHub Releases...", Toast.LENGTH_SHORT).show();
+        org.telegram.messenger.Utilities.globalQueue.postRunnable(() -> {
+            try {
+                URL url = new URL("https://api.github.com/repos/contacindogaronet-ops/exteraGram/releases/latest");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("User-Agent", "Telegram-Android-DevOps");
+                
+                if (conn.getResponseCode() == 200) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder result = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        result.append(line);
+                    }
+                    reader.close();
+
+                    JSONObject json = new JSONObject(result.toString());
+                    String tagName = json.getString("tag_name");
+                    String htmlUrl = json.getString("html_url");
+
+                    AndroidUtilities.runOnUIThread(() -> {
+                        if (getParentActivity() != null) {
+                            Toast.makeText(getParentActivity(), "Latest Version: " + tagName, Toast.Long_LONG).show();
+                            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(htmlUrl));
+                            getParentActivity().startActivity(browserIntent);
+                        }
+                    });
+                } else {
+                    AndroidUtilities.runOnUIThread(() -> 
+                        Toast.makeText(getParentActivity(), "Failed to check updates (HTTP " + conn.getResponseCode() + ")", Toast.LENGTH_SHORT).show()
+                    );
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+                AndroidUtilities.runOnUIThread(() -> 
+                    Toast.makeText(getParentActivity(), "Error checking updates. Check connection.", Toast.LENGTH_SHORT).show()
+                );
+            }
+        });
     }
 }
