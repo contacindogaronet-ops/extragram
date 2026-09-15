@@ -42,6 +42,8 @@ public class BuildVars {
 
     // works only on official app ids, disable on your forks
     public static boolean SUPPORTS_PASSKEYS = true;
+    public static String BUILD_GIT_HASH = BuildConfig.BUILD_GIT_HASH;
+
 
     static {
         if (ApplicationLoader.applicationContext != null) {

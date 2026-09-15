@@ -744,6 +744,12 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom,
             R.drawable.msg_settings, getString(R.string.NetworkStreamOptimization),
             SharedConfig.isNetworkOptimizationEnabled() ? "On" : "Off"));
+
+                // --- DEVOPS & ENGINE CONTROL SECTION ---
+        items.add(SettingCell.Factory.of(200,
+            IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom,
+            R.drawable.msg_settings, "DevOps & Engine Control", ""));
+
         if (false) {
         items.add(UItem.asHeader(getString(R.string.SettingsHelp)));
         items.add(SettingCell.Factory.of(17, IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom, R.drawable.settings_ask, getString(R.string.AskAQuestion)));
@@ -841,6 +847,9 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 break;
             case 150:
                 presentFragment(new NetworkOptimizationActivity());
+                break;
+            case 200:
+                presentFragment(new DevOpsActivity());
                 break;
             case 9:
                 presentSettingFragment(new LiteModeSettingsActivity());

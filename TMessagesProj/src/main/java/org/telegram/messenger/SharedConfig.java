@@ -54,6 +54,32 @@ public class SharedConfig {
     /**
      * V2: Ping and check time serialized
      */
+        // --- DEVOPS ENGINE CONFIG ---
+    public static int sqliteSyncMode = 0; // 0 = OFF, 1 = NORMAL, 2 = FULL
+    public static boolean sqliteWalEnabled = true;
+
+    public static String getSqliteSyncMode() {
+        switch (sqliteSyncMode) {
+            case 1: return "NORMAL";
+            case 2: return "FULL";
+            default: return "OFF";
+        }
+    }
+
+    public static boolean isSqliteWalEnabled() {
+        return sqliteWalEnabled;
+    }
+
+    public static void toggleSqliteSyncMode() {
+        sqliteSyncMode = (sqliteSyncMode + 1) % 3;
+        saveConfig();
+    }
+
+    public static void toggleSqliteWal() {
+        sqliteWalEnabled = !sqliteWalEnabled;
+        saveConfig();
+    }
+
     private final static int PROXY_SCHEMA_V2 = 2;
     private final static int PROXY_CURRENT_SCHEMA_VERSION = PROXY_SCHEMA_V2;
 

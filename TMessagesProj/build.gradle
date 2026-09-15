@@ -1,5 +1,18 @@
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 
+def getGitHash = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    } catch (Exception e) {
+        return "dev-local"
+    }
+}
+
 apply plugin: 'com.android.library'
 apply plugin: 'org.telegram.lottie-meta'
 apply plugin: 'idea'
@@ -130,7 +143,7 @@ android {
         targetSdkVersion 36
 
         vectorDrawables.generatedDensities = ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi']
-
+        buildConfigField "String", "BUILD_GIT_HASH", "\"${getGitHash()}\""
         multiDexEnabled true
 
         externalNativeBuild {
