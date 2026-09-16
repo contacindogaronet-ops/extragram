@@ -2,22 +2,15 @@ package org.telegram.ui;
 
 import android.content.Context;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
-import org.telegram.ui.ActionBar.Theme;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
-import org.telegram.ui.Cells.HeaderCell;
-import org.telegram.ui.Cells.ShadowSectionCell;
-import org.telegram.ui.Cells.TextCheckCell;
-import org.telegram.ui.Cells.TextCell;
+import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 
@@ -27,50 +20,14 @@ public class DevOpsActivity extends BaseFragment {
 
     private ListAdapter listAdapter;
     private RecyclerListView listView;
+    private final ArrayList<UIItem> items = new ArrayList<>();
 
-    private final ArrayList<ItemInner> items = new ArrayList<>();
-
-    // Definisikan row index untuk tiap sub-menu di dalam DevOps
-    private int otaUpdateRow;
-    private int telemetryMetricsRow;
-    private int backgroundDaemonRow;
-    private int systemLogsRow;
-    private int headerPrivateRow;
-    private int privateTokenRow;
-    private int shadowRow;
-
-    private static class ItemInner {
-        public int viewType;
-        public String text;
-        public boolean booleanValue;
-
-        private ItemInner(int type) {
-            this.viewType = type;
-        }
-
-        public static ItemInner asSetting(String text) {
-            ItemInner item = new ItemInner(0);
-            item.text = text;
-            return item;
-        }
-
-        public static ItemInner asHeader(String text) {
-            ItemInner item = new ItemInner(1);
-            item.text = text;
-            return item;
-        }
-
-        public static ItemInner asCheck(String text, boolean value) {
-            ItemInner item = new ItemInner(2);
-            item.text = text;
-            item.booleanValue = value;
-            return item;
-        }
-
-        public static ItemInner asShadow() {
-            return new ItemInner(3);
-        }
-    }
+    // Definisikan ID Statis untuk setiap sub-menu DevOps (Konsisten ala exteraGram)
+    private static final int otaUpdateRow = 1;
+    private static final int telemetryMetricsRow = 2;
+    private static final int backgroundDaemonRow = 3;
+    private static final int systemLogsRow = 4;
+    private static final int privateTokenRow = 5;
 
     @Override
     public boolean onFragmentCreate() {
@@ -81,31 +38,21 @@ public class DevOpsActivity extends BaseFragment {
 
     private void updateRows() {
         items.clear();
-        int row = 0;
 
-        // Pendaftaran menu utama di dalam DevOps Hub
-        items.add(ItemInner.asHeader("DEVOPS & ENGINE PIPELINE"));
-        otaUpdateRow = row++;
-        items.add(ItemInner.asSetting("OTA & Build Updates"));
+        // Header Pipeline DevOps
+        items.add(UIItem.asHeader("DEVOPS & ENGINE PIPELINE"));
         
-        telemetryMetricsRow = row++;
-        items.add(ItemInner.asSetting("Telemetry & Memory Pools"));
-        
-        backgroundDaemonRow = row++;
-        items.add(ItemInner.asSetting("Background Daemon Control"));
-        
-        systemLogsRow = row++;
-        items.add(ItemInner.asSetting("Live System & Kernel Logs"));
+        // Daftarkan item pakai Factory agar sama persis dengan SettingsActivity
+        items.add(SettingCell.Factory.of(otaUpdateRow, IconBackgroundColors.BLUE, R.drawable.msg_settings, "OTA & Build Updates", true));
+        items.add(SettingCell.Factory.of(telemetryMetricsRow, IconBackgroundColors.GREEN, R.drawable.msg_settings, "Telemetry & Memory Pools", true));
+        items.add(SettingCell.Factory.of(backgroundDaemonRow, IconBackgroundColors.ORANGE, R.drawable.msg_settings, "Background Daemon Control", true));
+        items.add(SettingCell.Factory.of(systemLogsRow, IconBackgroundColors.VIOLET, R.drawable.msg_settings, "Live System & Kernel Logs", true));
 
-        // Bagian privat atau konfigurasi tambahan
-        headerPrivateRow = row++;
-        items.add(ItemInner.asHeader("SECURE CONFIG & TOKENS"));
-        
-        privateTokenRow = row++;
-        items.add(ItemInner.asSetting("Manage API & Secret Tokens"));
+        // Header Secure Config
+        items.add(UIItem.asHeader("SECURE CONFIG"));
+        items.add(SettingCell.Factory.of(privateTokenRow, IconBackgroundColors.RED, R.drawable.msg_permissions, "Manage API & Secret Tokens", true));
 
-        shadowRow = row++;
-        items.add(ItemInner.asShadow());
+        items.add(UIItem.asShadow(null));
     }
 
     @Override
@@ -135,96 +82,34 @@ public class DevOpsActivity extends BaseFragment {
         
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        // Handler klik berdasarkan posisi item yang didaftarkan lewat items.add
+        // Routing switch-case berbasis ID Statis (Clean & Safe)
         listView.setOnItemClickListener((view, position) -> {
-            if (position == otaUpdateRow) {
-                   presentFragment(new DevOpsOtaActivity());
-            } else if (position == telemetryMetricsRow) {
-                   presentFragment(new DevOpsTelemetryActivity());
-            } else if (position == backgroundDaemonRow) {
-                   presentFragment(new DevOpsDaemonActivity());
-            } else if (position == systemLogsRow) {
-                   presentFragment(new DevOpsLogsActivity());
-            } else if (position == privateTokenRow) {
-                   presentFragment(new DevOpsTokenActivity());
+            UIItem item = items.get(position);
+            if (item == null) return;
+            int id = item.id;
+
+            switch (id) {
+                case otaUpdateRow:
+                    presentFragment(new DevOpsOtaActivity());
+                    break;
+                case telemetryMetricsRow:
+                    presentFragment(new DevOpsTelemetryActivity());
+                    break;
+                case backgroundDaemonRow:
+                    presentFragment(new DevOpsDaemonActivity());
+                    break;
+                case systemLogsRow:
+                    presentFragment(new DevOpsLogsActivity());
+                    break;
+                case privateTokenRow:
+                    presentFragment(new DevOpsTokenActivity());
+                    break;
             }
         });
 
         return fragmentView;
     }
 
-    private class ListAdapter extends RecyclerListView.SelectionAdapter {
-        private final Context mContext;
-
-        public ListAdapter(Context context) {
-            mContext = context;
-        }
-
-        @Override
-        public int getItemCount() {
-            return items.size();
-        }
-
-        @Override
-        public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            int type = holder.getItemViewType();
-            return type == 0 || type == 2; // Hanya cell tipe setting/check yang bisa diklik
-        }
-
-        @Override
-        public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view;
-            switch (viewType) {
-                case 1:
-                    view = new HeaderCell(mContext);
-                    view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-                    break;
-                case 2:
-                    view = new TextCheckCell(mContext);
-                    view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-                    break;
-                case 3:
-                    view = new ShadowSectionCell(mContext);
-                    break;
-                case 0:
-                default:
-                    view = new TextCell(mContext);
-                    view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-                    break;
-            }
-            return new RecyclerListView.Holder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-            ItemInner item = items.get(position);
-            switch (holder.getItemViewType()) {
-                case 0:
-                    TextCell textCell = (TextCell) holder.itemView;
-                    textCell.setText(item.text, true);
-                    break;
-                case 1:
-                    HeaderCell headerCell = (HeaderCell) holder.itemView;
-                    headerCell.setText(item.text);
-                    break;
-                case 2:
-                    TextCheckCell checkCell = (TextCheckCell) holder.itemView;
-                    checkCell.setTextAndCheck(item.text, item.booleanValue, true);
-                    break;
-            }
-        }
-
-        @Override
-        public int getItemViewType(int position) {
-            return items.get(position).viewType;
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (listAdapter != null) {
-            listAdapter.notifyDataSetChanged();
-        }
-    }
+    // Menggunakan Adapter bawaan struktur exteraGram jika sudah tersedia globally, 
+    // atau gunakan adapter standar SettingsActivity yang sudah ada.
 }
