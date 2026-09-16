@@ -190,7 +190,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
     private int versionViewPressCount = 0;
     private static final int networkOptimizationRow = 150;
     private static final int devOpsRow = 200;
-    private static final int NetworkEngineRow = 151:
+    private static final int NetworkEngineRow = 151;
     public SettingsActivity() {
         this(null);
     }
