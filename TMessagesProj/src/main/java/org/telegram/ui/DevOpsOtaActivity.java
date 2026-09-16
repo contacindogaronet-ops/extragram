@@ -9,7 +9,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -22,20 +21,16 @@ import org.telegram.ui.Components.RecyclerListView;
 
 import java.util.ArrayList;
 
-public class DevOpsActivity extends BaseFragment {
+public class DevOpsOtaActivity extends BaseFragment {
 
     private ListAdapter listAdapter;
     private RecyclerListView listView;
 
     private final ArrayList<ItemInner> items = new ArrayList<>();
 
-    // Definisikan row index untuk tiap sub-menu di dalam DevOps
-    private int otaUpdateRow;
-    private int telemetryMetricsRow;
-    private int backgroundDaemonRow;
-    private int systemLogsRow;
-    private int headerPrivateRow;
-    private int privateTokenRow;
+    private int autoCheckRow;
+    private int checkNowRow;
+    private int releaseChannelRow;
     private int shadowRow;
 
     private static class ItemInner {
@@ -82,26 +77,16 @@ public class DevOpsActivity extends BaseFragment {
         items.clear();
         int row = 0;
 
-        // Pendaftaran menu utama di dalam DevOps Hub
-        items.add(ItemInner.asHeader("DEVOPS & ENGINE PIPELINE"));
-        otaUpdateRow = row++;
-        items.add(ItemInner.asSetting("OTA & Build Updates"));
+        items.add(ItemInner.asHeader("OTA & UPDATE CONFIGURATION"));
+        autoCheckRow = row++;
+        items.add(ItemInner.asCheck("Auto-check for Updates on Startup", true));
         
-        telemetryMetricsRow = row++;
-        items.add(ItemInner.asSetting("Telemetry & Memory Pools"));
-        
-        backgroundDaemonRow = row++;
-        items.add(ItemInner.asSetting("Background Daemon Control"));
-        
-        systemLogsRow = row++;
-        items.add(ItemInner.asSetting("Live System & Kernel Logs"));
+        checkNowRow = row++;
+        items.add(ItemInner.asSetting("Check for Updates Now"));
 
-        // Bagian privat atau konfigurasi tambahan
-        headerPrivateRow = row++;
-        items.add(ItemInner.asHeader("SECURE CONFIG & TOKENS"));
-        
-        privateTokenRow = row++;
-        items.add(ItemInner.asSetting("Manage API & Secret Tokens"));
+        items.add(ItemInner.asHeader("RELEASE CHANNEL"));
+        releaseChannelRow = row++;
+        items.add(ItemInner.asSetting("Channel: Stable / Release"));
 
         shadowRow = row++;
         items.add(ItemInner.asShadow());
@@ -111,7 +96,7 @@ public class DevOpsActivity extends BaseFragment {
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle("DevOps & Telemetry Hub");
+        actionBar.setTitle("OTA & Build Updates");
         
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
@@ -134,18 +119,19 @@ public class DevOpsActivity extends BaseFragment {
         
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        // Handler klik berdasarkan posisi item yang didaftarkan lewat items.add
         listView.setOnItemClickListener((view, position) -> {
-            if (position == otaUpdateRow) {
-                   presentFragment(new DevOpsOtaActivity());
-            } else if (position == telemetryMetricsRow) {
-                   presentFragment(new DevOpsTelemetryActivity());
-            } else if (position == backgroundDaemonRow) {
-                   presentFragment(new DevOpsDaemonActivity());
-            } else if (position == systemLogsRow) {
-                   presentFragment(new DevOpsLogsActivity());
-            } else if (position == privateTokenRow) {
-                   presentFragment(new DevOpsTokenActivity());
+            if (position == checkNowRow) {
+                // Trigger logika cek update manual ke GitHub API
+                AndroidUtilities.runOnUIThread(() -> {
+                    // Tampilkan toast atau dialog pengecekan
+                });
+            } else if (position == autoCheckRow) {
+                if (view instanceof TextCheckCell) {
+                    boolean val = !((TextCheckCell) view).isChecked();
+                    ((TextCheckCell) view).setChecked(val);
+                }
+            } else if (position == releaseChannelRow) {
+                // Ubah channel build (Stable / Nightly)
             }
         });
 
@@ -167,7 +153,7 @@ public class DevOpsActivity extends BaseFragment {
         @Override
         public boolean isEnabled(RecyclerView.ViewHolder holder) {
             int type = holder.getItemViewType();
-            return type == 0 || type == 2; // Hanya cell tipe setting/check yang bisa diklik
+            return type == 0 || type == 2;
         }
 
         @Override
@@ -216,14 +202,6 @@ public class DevOpsActivity extends BaseFragment {
         @Override
         public int getItemViewType(int position) {
             return items.get(position).viewType;
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (listAdapter != null) {
-            listAdapter.notifyDataSetChanged();
         }
     }
 }
