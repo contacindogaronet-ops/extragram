@@ -14,7 +14,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.Cells.HeaderCell;
 import org.telegram.ui.Cells.ShadowSectionCell;
 import org.telegram.ui.Cells.TextDetailCell;
-import org.telegram.ui.Cells.TextSettingCell;
+import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 

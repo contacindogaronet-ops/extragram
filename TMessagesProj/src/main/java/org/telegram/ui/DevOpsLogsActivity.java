@@ -13,7 +13,7 @@ import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.Cells.HeaderCell;
 import org.telegram.ui.Cells.ShadowSectionCell;
-import org.telegram.ui.Cells.TextSettingCell;
+import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 
@@ -92,12 +92,12 @@ public class DevOpsLogsActivity extends BaseFragment {
             View view;
             if (viewType == 1) view = new HeaderCell(mContext);
             else if (viewType == 3) view = new ShadowSectionCell(mContext);
-            else view = new TextSettingCell(mContext);
+            else view = new TextCell(mContext);
             return new RecyclerListView.Holder(view);
         }
         @Override public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
             ItemInner item = items.get(position);
-            if (holder.getItemViewType() == 0) ((TextSettingCell) holder.itemView).setText(item.text, true);
+            if (holder.getItemViewType() == 0) ((TextCell) holder.itemView).setText(item.text, true);
             else if (holder.getItemViewType() == 1) ((HeaderCell) holder.itemView).setText(item.text);
         }
         @Override public int getItemViewType(int position) { return items.get(position).viewType; }

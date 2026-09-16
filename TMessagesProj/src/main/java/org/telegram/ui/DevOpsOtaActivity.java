@@ -15,7 +15,7 @@ import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.Cells.HeaderCell;
 import org.telegram.ui.Cells.ShadowSectionCell;
 import org.telegram.ui.Cells.TextCheckCell;
-import org.telegram.ui.Cells.TextSettingCell;
+import org.telegram.ui.Cells.TextCell;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 
@@ -173,7 +173,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                     break;
                 case 0:
                 default:
-                    view = new TextSettingCell(mContext);
+                    view = new TextCell(mContext);
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                     break;
             }
@@ -185,7 +185,7 @@ public class DevOpsOtaActivity extends BaseFragment {
             ItemInner item = items.get(position);
             switch (holder.getItemViewType()) {
                 case 0:
-                    TextSettingCell textCell = (TextSettingCell) holder.itemView;
+                    TextCell textCell = (TextCell) holder.itemView;
                     textCell.setText(item.text, true);
                     break;
                 case 1:
