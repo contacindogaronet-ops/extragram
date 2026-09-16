@@ -2,6 +2,7 @@ package org.telegram.ui;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.view.View;
 import android.widget.Toast;
@@ -12,6 +13,7 @@ import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -28,6 +30,11 @@ import java.util.ArrayList;
 public class DevOpsActivity extends BaseFragment {
 
     private UniversalAdapter adapter;
+    private static final String PREF_NAME = "DevOpsEnginePrefs";
+
+    private SharedPreferences getPreferences() {
+        return ApplicationLoader.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+    }
 
     @Override
     public View createView(Context context) {
@@ -46,12 +53,14 @@ public class DevOpsActivity extends BaseFragment {
         RecyclerListView listView = new RecyclerListView(context);
         listView.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
 
-        adapter = new UniversalAdapter(listView, context, currentApplicationAccount, 0, this::fillItems, null);
+        adapter = new UniversalAdapter(listView, context, currentAccount, 0, this::fillItems, null);
         listView.setAdapter(adapter);
 
         listView.setOnItemClickListener((view, position) -> {
             UItem item = adapter.getItem(position);
             if (item == null) return;
+
+            SharedPreferences prefs = getPreferences();
 
             switch (item.id) {
                 case 101:
@@ -94,22 +103,19 @@ public class DevOpsActivity extends BaseFragment {
                     break;
 
                 case 301:
-                    boolean currentBypass = SharedConfig.isBypassProtectedContentEnabled();
-                    SharedConfig.setBypassProtectedContentEnabled(!currentBypass);
+                    boolean currentBypass = prefs.getBoolean("bypass_protected", false);
+                    prefs.edit().putBoolean("bypass_protected", !currentBypass).apply();
                     if (adapter != null) adapter.update(true);
                     Toast.makeText(getParentActivity(), "Protected Content Bypass: " + (!currentBypass ? "ACTIVE" : "OFF"), Toast.LENGTH_SHORT).show();
                     break;
 
                 case 302:
-                    // REAL NETWORK ROUTING & SOCKET OPTIMIZATION TRIGGER
-                    boolean currentRouting = SharedConfig.isCustomNetworkRoutingEnabled();
+                    boolean currentRouting = prefs.getBoolean("custom_routing", false);
                     boolean newState = !currentRouting;
-                    SharedConfig.setCustomNetworkRoutingEnabled(newState);
+                    prefs.edit().putBoolean("custom_routing", newState).apply();
                     
-                    // Eksekusi real re-initialization socket / connection pool ke native layer
                     try {
                         int currentAcc = getCurrentAccount();
-                        // Memaksa ConnectionsManager memperbarui policy routing & zero-copy flag socket
                         ConnectionsManager.getInstance(currentAcc).setAppPaused(false, false);
                         ConnectionsManager.getInstance(currentAcc).checkConnection();
                     } catch (Exception e) {
@@ -132,6 +138,8 @@ public class DevOpsActivity extends BaseFragment {
     }
 
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
+        SharedPreferences prefs = getPreferences();
+
         items.add(UItem.asHeader("OTA & Updates"));
         items.add(UItem.asButton(101, "Check for App Updates", "Check"));
 
@@ -149,11 +157,11 @@ public class DevOpsActivity extends BaseFragment {
         items.add(UItem.asHeader("Advanced Power-User Tools"));
         
         UItem bypassItem = UItem.asCheck(301, "Bypass Protected Content");
-        bypassItem.checked = SharedConfig.isBypassProtectedContentEnabled();
+        bypassItem.checked = prefs.getBoolean("bypass_protected", false);
         items.add(bypassItem);
 
         UItem routingItem = UItem.asCheck(302, "Zero-Copy TCP / Fast Routing");
-        routingItem.checked = SharedConfig.isCustomNetworkRoutingEnabled();
+        routingItem.checked = prefs.getBoolean("custom_routing", false);
         items.add(routingItem);
 
         items.add(UItem.asShadow(null));
@@ -206,7 +214,7 @@ public class DevOpsActivity extends BaseFragment {
             } catch (Exception e) {
                 FileLog.e(e);
                 AndroidUtilities.runOnUIThread(() -> 
-                    Toast.MmakeText(getParentActivity(), "Error checking updates. Check connection.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(getParentActivity(), "Error checking updates. Check connection.", Toast.LENGTH_SHORT).show()
                 );
             } finally {
                 if (conn != null) {
