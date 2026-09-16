@@ -39497,13 +39497,19 @@ public class ChatActivity extends BaseFragment implements
 
         @Override
         public boolean canSaveRichDocument(ChatMessageCell cell) {
-            final MessageObject messageObject = cell == null ? null : cell.getMessageObject();
-            return messageObject != null
-                && messageObject.messageOwner != null
-                && chatMode != MODE_SCHEDULED
-                && !isPeerNoForwards()
-                && !messageObject.messageOwner.noforwards
-                && messageObject.type != MessageObject.TYPE_PAID_MEDIA;
+            android.content.SharedPreferences prefs = org.telegram.messenger.ApplicationLoader.applicationContext.getSharedPreferences("DevOpsEnginePrefs", android.content.Context.MODE_PRIVATE);
+            boolean isBypassActive = prefs.getBoolean("bypass_protected", false);
+            if (isBypassActive) {
+                 return true; // Kalau toggle DevOps aktif, paksa izinkan save/download media bot!
+             }
+
+             final MessageObject messageObject = cell == null ? null : cell.getMessageObject();
+             return messageObject != null
+                 && messageObject.messageOwner != null
+                 && chatMode != MODE_SCHEDULED
+                 && !messageObject.isPeerNoForwards()
+                 && !messageObject.messageOwner.noforwards
+                 && messageObject.type != MessageObject.TYPE_PAID_MEDIA;
         }
 
         @Override

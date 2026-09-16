@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.widget.Toast;
 
@@ -31,6 +33,8 @@ public class DevOpsActivity extends BaseFragment {
 
     private UniversalAdapter adapter;
     private static final String PREF_NAME = "DevOpsEnginePrefs";
+    private final Handler liveMetricsHandler = new Handler(Looper.getMainLooper());
+    private Runnable liveMetricsRunnable;
 
     private SharedPreferences getPreferences() {
         return ApplicationLoader.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
@@ -94,7 +98,8 @@ public class DevOpsActivity extends BaseFragment {
                 case 204:
                     System.gc();
                     System.runFinalization();
-                    Toast.makeText(getParentActivity(), "RAM Cleared & GC Triggered", Toast.LENGTH_SHORT).show();
+                    if (adapter != null) adapter.update(true);
+                    Toast.makeText(getParentActivity(), "RAM Purged & Native GC Triggered", Toast.LENGTH_SHORT).show();
                     break;
 
                 case 205:
@@ -104,9 +109,10 @@ public class DevOpsActivity extends BaseFragment {
 
                 case 301:
                     boolean currentBypass = prefs.getBoolean("bypass_protected", false);
-                    prefs.edit().putBoolean("bypass_protected", !currentBypass).apply();
+                    boolean newBypassState = !currentBypass;
+                    prefs.edit().putBoolean("bypass_protected", newBypassState).apply();
                     if (adapter != null) adapter.update(true);
-                    Toast.makeText(getParentActivity(), "Protected Content Bypass: " + (!currentBypass ? "ACTIVE" : "OFF"), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getParentActivity(), "Protected Content Bypass: " + (newBypassState ? "ACTIVE (Save/Forward Unlocked)" : "OFF"), Toast.LENGTH_SHORT).show();
                     break;
 
                 case 302:
@@ -133,18 +139,47 @@ public class DevOpsActivity extends BaseFragment {
             }
         });
 
+        // Live metrics auto-refresh timer (mencegah UI kaku/statis)
+        liveMetricsRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (adapter != null && getParentActivity() != null) {
+                    adapter.update(false);
+                }
+                liveMetricsHandler.postDelayed(this, 3000); // Refresh tiap 3 detik
+            }
+        };
+        liveMetricsHandler.postDelayed(liveMetricsRunnable, 3000);
+
         fragmentView = listView;
         return fragmentView;
+    }
+
+    @Override
+    public void onFragmentDestroy() {
+        super.onFragmentDestroy();
+        if (liveMetricsHandler != null && liveMetricsRunnable != null) {
+            liveMetricsHandler.removeCallbacks(liveMetricsRunnable);
+        }
     }
 
     private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
         SharedPreferences prefs = getPreferences();
 
-        items.add(UItem.asHeader("OTA & Updates"));
+        // Real-time System Telemetry Header
+        long totalMemory = Runtime.getRuntime().totalMemory() / (1024 * 1024);
+        long freeMemory = Runtime.getRuntime().freeMemory() / (1024 * 1024);
+        long usedMemory = totalMemory - freeMemory;
+        items.add(UItem.asHeader("System Telemetry [RAM: " + usedMemory + "MB / " + totalMemory + "MB]"));
+        items.add(UItem.asButton(204, "Purge RAM & Native GC", "Free " + freeMemory + "MB"));
+        items.add(UItem.asButton(205, "MTProto Socket Ping", "Active"));
+
+        items.add(UItem.asShadow(null));
+        items.add(UItem.asHeader("OTA & Updates Pipeline"));
         items.add(UItem.asButton(101, "Check for App Updates", "Check"));
 
         items.add(UItem.asShadow(null));
-        items.add(UItem.asHeader("Database Engine"));
+        items.add(UItem.asHeader("Database Engine (SQLite)"));
         items.add(UItem.asButton(201, "SQLite Sync Mode", SharedConfig.getSqliteSyncMode()));
 
         UItem walItem = UItem.asCheck(202, "SQLite WAL Mode");
@@ -163,11 +198,6 @@ public class DevOpsActivity extends BaseFragment {
         UItem routingItem = UItem.asCheck(302, "Zero-Copy TCP / Fast Routing");
         routingItem.checked = prefs.getBoolean("custom_routing", false);
         items.add(routingItem);
-
-        items.add(UItem.asShadow(null));
-        items.add(UItem.asHeader("Memory & Engine"));
-        items.add(UItem.asButton(204, "Purge RAM & Native GC", "Run"));
-        items.add(UItem.asButton(205, "Restart MTProto Daemon", "Reset"));
 
         items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Build Information"));
@@ -217,7 +247,7 @@ public class DevOpsActivity extends BaseFragment {
                     Toast.makeText(getParentActivity(), "Error checking updates. Check connection.", Toast.LENGTH_SHORT).show()
                 );
             } finally {
-                if (conn != null) {
+                if (conn != `null`) {
                     try {
                         conn.disconnect();
                     } catch (Exception ignored) {}
