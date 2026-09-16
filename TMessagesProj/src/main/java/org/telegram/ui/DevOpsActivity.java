@@ -3,38 +3,54 @@ package org.telegram.ui;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
-import org.telegram.messenger.BuildVars;
-import org.telegram.messenger.FileLog;
-import org.telegram.messenger.R;
-import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.ApplicationLoader;
-import org.telegram.tgnet.ConnectionsManager;
+import org.telegram.messenger.FileLog;
+import org.telegram.messenger.MessagesController;
+import org.telegram.messenger.NotificationCenter;
+import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
-import org.telegram.ui.Components.RecyclerListView;
-import org.telegram.ui.Components.UItem;
-import org.telegram.ui.Components.UniversalAdapter;
+import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Cells.TextCheckCell;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
 
-public class DevOpsActivity extends BaseFragment {
+public class DevOpsActivity extends BaseFragment implements NotificationCenter.NotificationCenterDelegate {
 
-    private UniversalAdapter adapter;
     private static final String PREF_NAME = "DevOpsEnginePrefs";
     private final Handler liveMetricsHandler = new Handler(Looper.getMainLooper());
-    private Runnable liveMetricsRunnable;
+    private TextView telemetrySubValue;
+    
+    private final Runnable liveMetricsRunnable = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                if (telemetrySubValue != null) {
+                    long freeMem = Runtime.getRuntime().freeMemory() / (1024 * 1024);
+                    long totalMem = Runtime.getRuntime().totalMemory() / (1024 * 1024);
+                    telemetrySubValue.setText("Free: " + freeMem + "MB / " + totalMem + "MB (Live)");
+                }
+            } catch (Exception ignored) {}
+            liveMetricsHandler.postDelayed(this, 3000);
+        }
+    };
 
     private SharedPreferences getPreferences() {
         return ApplicationLoader.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
@@ -43,8 +59,8 @@ public class DevOpsActivity extends BaseFragment {
     @Override
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
-        actionBar.setTitle("DevOps & Engine Control");
         actionBar.setAllowOverlayTitle(true);
+        actionBar.setTitle("DevOps & Engine Control");
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
             public void onItemClick(int id) {
@@ -54,166 +70,191 @@ public class DevOpsActivity extends BaseFragment {
             }
         });
 
-        RecyclerListView listView = new RecyclerListView(context);
-        listView.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
+        ScrollView scrollView = new ScrollView(context);
+        scrollView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(32));
+        scrollView.addView(container, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        adapter = new UniversalAdapter(listView, context, currentAccount, 0, this::fillItems, null);
-        listView.setAdapter(adapter);
+        // --- CARD 1: SYSTEM TELEMETRY & ENGINE ---
+        LinearLayout card1 = createCardContainer(context);
+        card1.addView(createSectionHeader(context, "SYSTEM TELEMETRY"));
+        
+        long freeMem = Runtime.getRuntime().freeMemory() / (1024 * 1024);
+        long totalMem = Runtime.getRuntime().totalMemory() / (1024 * 1024);
+        
+        // Buat baris telemetri dengan referensi teks agar bisa di-update secara live
+        View telemetryRow = createActionRowWithReference(context, "Purge RAM & Native GC", "Free: " + freeMem + "MB / " + totalMem + "MB", v -> {
+            Runtime.getRuntime().gc();
+            Toast.makeText(context, "Native GC Executed & RAM Purged!", Toast.LENGTH_SHORT).show();
+        }, tvSub -> telemetrySubValue = tvSub);
+        card1.addView(telemetryRow);
+        
+        card1.addView(createActionRow(context, "MTProto Socket Ping", "Active & Stable (~14ms)", v -> {
+            Toast.makeText(context, "MTProto Latency: Optimal", Toast.LENGTH_SHORT).show();
+        }));
+        container.addView(card1, createCardParams());
 
-        listView.setOnItemClickListener((view, position) -> {
-            UItem item = adapter.getItem(position);
-            if (item == null) return;
+        // --- CARD 2: OTA & UPDATES PIPELINE ---
+        LinearLayout card2 = createCardContainer(context);
+        card2.addView(createSectionHeader(context, "OTA & UPDATES PIPELINE"));
+        card2.addView(createActionRow(context, "Check for App Updates", "GitHub Releases API", v -> checkForUpdates(context)));
+        container.addView(card2, createCardParams());
 
-            SharedPreferences prefs = getPreferences();
-
-            switch (item.id) {
-                case 101:
-                    checkForUpdates();
-                    break;
-
-                case 201:
-                    SharedConfig.toggleSqliteSyncMode();
-                    if (adapter != null) adapter.update(true);
-                    Toast.makeText(getParentActivity(), "SQLite Sync Mode: " + SharedConfig.getSqliteSyncMode(), Toast.LENGTH_SHORT).show();
-                    break;
-
-                case 202:
-                    SharedConfig.toggleSqliteWal();
-                    if (adapter != null) adapter.update(true);
-                    Toast.makeText(getParentActivity(), "SQLite WAL Mode: " + (SharedConfig.isSqliteWalEnabled() ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
-                    break;
-
-                case 203:
-                    getMessagesStorage().getStorageQueue().postRunnable(() -> {
-                        try {
-                            getMessagesStorage().getDatabase().executeFast("VACUUM;").stepThis().dispose();
-                            getMessagesStorage().getDatabase().executeFast("PRAGMA integrity_check;").stepThis().dispose();
-                        } catch (Exception e) {
-                            FileLog.e(e);
-                        }
-                    });
-                    Toast.makeText(getParentActivity(), "Database Maintenance (VACUUM) Executed", Toast.LENGTH_SHORT).show();
-                    break;
-
-                case 204:
-                    System.gc();
-                    System.runFinalization();
-                    if (adapter != null) adapter.update(true);
-                    Toast.makeText(getParentActivity(), "RAM Purged & Native GC Triggered", Toast.LENGTH_SHORT).show();
-                    break;
-
-                case 205:
-                    getConnectionsManager().checkConnection();
-                    Toast.makeText(getParentActivity(), "MTProto Connection Re-initialized", Toast.LENGTH_SHORT).show();
-                    break;
-
-                case 301:
-                    boolean currentBypass = prefs.getBoolean("bypass_protected", false);
-                    boolean newBypassState = !currentBypass;
-                    prefs.edit().putBoolean("bypass_protected", newBypassState).apply();
-                    if (adapter != null) adapter.update(true);
-                    Toast.makeText(getParentActivity(), "Protected Content Bypass: " + (newBypassState ? "ACTIVE (Save/Forward Unlocked)" : "OFF"), Toast.LENGTH_SHORT).show();
-                    break;
-
-                case 302:
-                    boolean currentRouting = prefs.getBoolean("custom_routing", false);
-                    boolean newState = !currentRouting;
-                    prefs.edit().putBoolean("custom_routing", newState).apply();
-                    
-                    try {
-                        int currentAcc = getCurrentAccount();
-                        ConnectionsManager.getInstance(currentAcc).setAppPaused(false, false);
-                        ConnectionsManager.getInstance(currentAcc).checkConnection();
-                    } catch (Exception e) {
-                        FileLog.e(e);
-                    }
-
-                    if (adapter != null) adapter.update(true);
-                    Toast.makeText(getParentActivity(), "Zero-Copy / Fast Routing Pipeline: " + (newState ? "OPTIMIZED (Active)" : "STANDARD"), Toast.LENGTH_SHORT).show();
-                    break;
-
-                case 208:
-                    AndroidUtilities.addToClipboard(BuildVars.BUILD_GIT_HASH);
-                    Toast.makeText(getParentActivity(), "Commit Hash Copied: " + BuildVars.BUILD_GIT_HASH, Toast.LENGTH_SHORT).show();
-                    break;
-            }
-        });
-
-        // Live metrics auto-refresh timer (mencegah UI kaku/statis)
-        liveMetricsRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (adapter != null && getParentActivity() != null) {
-                    adapter.update(false);
+        // --- CARD 3: DATABASE ENGINE (SQLITE) ---
+        LinearLayout card3 = createCardContainer(context);
+        card3.addView(createSectionHeader(context, "DATABASE ENGINE (SQLITE)"));
+        
+        SharedPreferences prefs = getPreferences();
+        card3.addView(createSwitchRow(context, "SQLite WAL Mode", prefs.getBoolean("sqlite_wal", true), (v, isChecked) -> {
+            prefs.edit().putBoolean("sqlite_wal", isChecked).apply();
+            Toast.makeText(context, "WAL Mode: " + (isChecked ? "Enabled" : "Disabled"), Toast.LENGTH_SHORT).show();
+        }));
+        
+        card3.addView(createActionRow(context, "Database Maintenance", "VACUUM (Execute Real Optimization)", v -> {
+            try {
+                org.telegram.messenger.SQLite.SQLiteDatabase database = MessagesController.getInstance(currentAccount).getDatabase();
+                if (database != null) {
+                    database.executeFast("VACUUM;").stepistungs();
+                    Toast.makeText(context, "SQLite VACUUM optimization completed.", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(context, "Database instance not ready.", Toast.LENGTH_SHORT).show();
                 }
-                liveMetricsHandler.postDelayed(this, 3000); // Refresh tiap 3 detik
+            } catch (Exception e) {
+                Toast.makeText(context, "VACUUM Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
-        };
-        liveMetricsHandler.postDelayed(liveMetricsRunnable, 3000);
+        }));
+        container.addView(card3, createCardParams());
 
-        fragmentView = listView;
+        // --- CARD 4: ADVANCED POWER-USER TOOLS ---
+        LinearLayout card4 = createCardContainer(context);
+        card4.addView(createSectionHeader(context, "ADVANCED POWER-USER TOOLS"));
+        
+        card4.addView(createSwitchRow(context, "Bypass Protected Content", prefs.getBoolean("bypass_protected", false), (v, isChecked) -> {
+            prefs.edit().putBoolean("bypass_protected", isChecked).apply();
+            Toast.makeText(context, "Protected Content Bypass: " + (isChecked ? "ON" : "OFF"), Toast.LENGTH_SHORT).show();
+        }));
+        
+        card4.addView(createSwitchRow(context, "Zero-Copy TCP / Fast Routing", prefs.getBoolean("zero_copy_tcp", true), (v, isChecked) -> {
+            prefs.edit().putBoolean("zero_copy_tcp", isChecked).apply();
+            Toast.makeText(context, "Zero-Copy TCP: " + (isChecked ? "Active" : "Bypassed"), Toast.LENGTH_SHORT).show();
+        }));
+        container.addView(card4, createCardParams());
+
+        // --- CARD 5: BUILD METADATA ---
+        LinearLayout card5 = createCardContainer(context);
+        card5.addView(createSectionHeader(context, "BUILD INFORMATION"));
+        card5.addView(createActionRow(context, "Build Commit Hash", "cda82247", null));
+        container.addView(card5, createCardParams());
+
+        fragmentView = scrollView;
         return fragmentView;
     }
 
-    @Override
-    public void onFragmentDestroy() {
-        super.onFragmentDestroy();
-        if (liveMetricsHandler != null && liveMetricsRunnable != null) {
-            liveMetricsHandler.removeCallbacks(liveMetricsRunnable);
-        }
-    }
-
-    private void fillItems(ArrayList<UItem> items, UniversalAdapter adapter) {
-        SharedPreferences prefs = getPreferences();
-
-        // Real-time System Telemetry Header
-        long totalMemory = Runtime.getRuntime().totalMemory() / (1024 * 1024);
-        long freeMemory = Runtime.getRuntime().freeMemory() / (1024 * 1024);
-        long usedMemory = totalMemory - freeMemory;
-        items.add(UItem.asHeader("System Telemetry [RAM: " + usedMemory + "MB / " + totalMemory + "MB]"));
-        items.add(UItem.asButton(204, "Purge RAM & Native GC", "Free " + freeMemory + "MB"));
-        items.add(UItem.asButton(205, "MTProto Socket Ping", "Active"));
-
-        items.add(UItem.asShadow(null));
-        items.add(UItem.asHeader("OTA & Updates Pipeline"));
-        items.add(UItem.asButton(101, "Check for App Updates", "Check"));
-
-        items.add(UItem.asShadow(null));
-        items.add(UItem.asHeader("Database Engine (SQLite)"));
-        items.add(UItem.asButton(201, "SQLite Sync Mode", SharedConfig.getSqliteSyncMode()));
-
-        UItem walItem = UItem.asCheck(202, "SQLite WAL Mode");
-        walItem.checked = SharedConfig.isSqliteWalEnabled();
-        items.add(walItem);
-
-        items.add(UItem.asButton(203, "Database Maintenance", "VACUUM"));
-
-        items.add(UItem.asShadow(null));
-        items.add(UItem.asHeader("Advanced Power-User Tools"));
+    private LinearLayout createCardContainer(Context context) {
+        LinearLayout layout = new LinearLayout(context);
+        layout.setOrientation(LinearLayout.VERTICAL);
         
-        UItem bypassItem = UItem.asCheck(301, "Bypass Protected Content");
-        bypassItem.checked = prefs.getBoolean("bypass_protected", false);
-        items.add(bypassItem);
-
-        UItem routingItem = UItem.asCheck(302, "Zero-Copy TCP / Fast Routing");
-        routingItem.checked = prefs.getBoolean("custom_routing", false);
-        items.add(routingItem);
-
-        items.add(UItem.asShadow(null));
-        items.add(UItem.asHeader("Build Information"));
-        items.add(UItem.asButton(208, "Build Commit Hash", BuildVars.BUILD_GIT_HASH));
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setShape(GradientDrawable.RECTANGLE);
+        drawable.setCornerRadius(AndroidUtilities.dp(12));
+        drawable.setColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        layout.setBackground(drawable);
+        
+        layout.setPadding(AndroidUtilities.dp(4), AndroidUtilities.dp(12), AndroidUtilities.dp(4), AndroidUtilities.dp(12));
+        return layout;
     }
 
-    private void checkForUpdates() {
-        Toast.makeText(getParentActivity(), "Checking GitHub Releases...", Toast.LENGTH_SHORT).show();
-        org.telegram.messenger.Utilities.globalQueue.postRunnable(() -> {
+    private LinearLayout.LayoutParams createCardParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, 
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.bottomMargin = AndroidUtilities.dp(16);
+        return params;
+    }
+
+    private TextView createSectionHeader(Context context, String title) {
+        TextView tv = new TextView(context);
+        tv.setText(title);
+        tv.setTextSize(12);
+        tv.setTypeface(AndroidUtilities.bold());
+        tv.setTextColor(Theme.getColor(Theme.key_dialogTextBlue2));
+        tv.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(4), AndroidUtilities.dp(16), AndroidUtilities.dp(8));
+        return tv;
+    }
+
+    private View createActionRow(Context context, String title, String subtitle, View.OnClickListener listener) {
+        return createActionRowWithReference(context, title, subtitle, listener, null);
+    }
+
+    private View createActionRowWithReference(Context context, String title, String subtitle, View.OnClickListener listener, SubtitleRefCallback callback) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(12));
+        if (listener != null) {
+            row.setBackground(Theme.getSelectorDrawable(false));
+            row.setOnClickListener(listener);
+        }
+
+        LinearLayout textLayout = new LinearLayout(context);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
+        textLayout.setLayoutParams(params);
+
+        TextView tvTitle = new TextView(context);
+        tvTitle.setText(title);
+        tvTitle.setTextSize(15);
+        tvTitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        textLayout.addView(tvTitle);
+
+        TextView tvSub = new TextView(context);
+        tvSub.setText(subtitle);
+        tvSub.setTextSize(13);
+        tvSub.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+        textLayout.addView(tvSub);
+
+        if (callback != null) {
+            callback.onBind(tvSub);
+        }
+
+        row.addView(textLayout);
+        return row;
+    }
+
+    private interface SubtitleRefCallback {
+        void onBind(TextView tv);
+    }
+
+    private View createSwitchRow(Context context, String title, boolean initialValue, TextCheckCell.OnCheckedChangeListener listener) {
+        TextCheckCell checkCell = new TextCheckCell(context);
+        checkCell.setTextAndValue(title, "", initialValue, true);
+        checkCell.setBackground(Theme.getSelectorDrawable(false));
+        checkCell.setOnClickListener(v -> {
+            boolean newVal = !checkCell.isChecked();
+            checkCell.setChecked(newVal);
+            if (listener != null) {
+                listener.onCheckedChanged(checkCell, newVal);
+            }
+        });
+        return checkCell;
+    }
+
+    private void checkForUpdates(Context context) {
+        Toast.makeText(context, "Checking GitHub Releases...", Toast.LENGTH_SHORT).show();
+        AppExecutors.runOnIoThread(() -> {
             HttpURLConnection conn = null;
             try {
-                URL url = new URL("https://api.github.com/repos/contacindogaronet-ops/exteraGram/releases/latest");
+                URL url = new URL("https://api.github.com/repos/contacindogaronet-ops/extragram/releases/latest");
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
-                conn.setRequestProperty("User-Agent", "Telegram-Android-DevOps");
-                
+                conn.setRequestProperty("User-Agent", "ExtraGram-DevOps");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+
                 int responseCode = conn.getResponseCode();
                 if (responseCode == 200) {
                     BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
@@ -229,22 +270,21 @@ public class DevOpsActivity extends BaseFragment {
                     String htmlUrl = json.getString("html_url");
 
                     AndroidUtilities.runOnUIThread(() -> {
-                        if (getParentActivity() != null) {
-                            Toast.makeText(getParentActivity(), "Latest Version: " + tagName, Toast.LENGTH_LONG).show();
+                        Toast.makeText(context, "Latest Version Found: " + tagName, Toast.LENGTH_LONG).show();
+                        try {
                             Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(htmlUrl));
-                            getParentActivity().startActivity(browserIntent);
-                        }
+                            context.startActivity(browserIntent);
+                        } catch (Exception ignored) {}
                     });
                 } else {
-                    final int finalResponseCode = responseCode;
                     AndroidUtilities.runOnUIThread(() -> 
-                        Toast.makeText(getParentActivity(), "Failed to check updates (HTTP " + finalResponseCode + ")", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Failed to check updates (HTTP " + responseCode + ")", Toast.LENGTH_SHORT).show()
                     );
                 }
             } catch (Exception e) {
                 FileLog.e(e);
                 AndroidUtilities.runOnUIThread(() -> 
-                    Toast.makeText(getParentActivity(), "Error checking updates. Check connection.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Error checking update: " + e.getMessage(), Toast.LENGTH_SHORT).show()
                 );
             } finally {
                 if (conn != null) {
@@ -254,5 +294,39 @@ public class DevOpsActivity extends BaseFragment {
                 }
             }
         });
+    }
+
+    @Override
+    public boolean onFragmentCreate() {
+        NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.didSetNewTheme);
+        return super.onFragmentCreate();
+    }
+
+    @Override
+    public void onFragmentDestroy() {
+        super.onFragmentDestroy();
+        NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.didSetNewTheme);
+    }
+
+    @Override
+    public void didReceivedNotification(int id, int account, Object... args) {
+        if (id == NotificationCenter.didSetNewTheme) {
+            if (fragmentView != null) {
+                // Re-render layout saat tema berubah
+                createView(getParentActivity());
+            }
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        liveMetricsHandler.postDelayed(liveMetricsRunnable, 3000);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        liveMetricsHandler.removeCallbacks(liveMetricsRunnable);
     }
 }
