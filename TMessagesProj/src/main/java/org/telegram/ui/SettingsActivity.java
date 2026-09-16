@@ -750,7 +750,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom,
             R.drawable.msg_settings, "DevOps & Engine Control", ""));
 
-        items.add(SettingCell.Factory.of(201, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.msg_network, "Network & Proxy Engine", ""));
+        items.add(SettingCell.Factory.of(201, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.msg_settings, "Network & Proxy Engine", ""));
 
         if (false) {
         items.add(UItem.asHeader(getString(R.string.SettingsHelp)));
