@@ -1,11 +1,11 @@
-name: Build and Auto Release APK
+name: Build Telegram Android Official ARM64
 
-off:
+on:
   push:
     branches:
       - main
     tags:
-      - 'v*' # Otomatis trigger kalau kamu push tag misal: git tag v1.0.0 && git push origin v1.0.0
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -52,18 +52,18 @@ jobs:
       - name: Build Release APK (AFAT)
         run: ./gradlew assembleAfatRelease --stacktrace
 
-      - name: Upload APK to Artifacts
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Telegram-Official-Release-APKss
-          path: 'TMessagesProj/build/outputs/apk/afat/release/app.apk'
+          path: 'TMessagesProj_App/build/outputs/apk/afat/release/app.apk'
           retention-days: 7
 
       - name: Create GitHub Release and Upload APK
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')
         with:
-          files: TMessagesProj/build/outputs/apk/afat/release/app.apk
+          files: 'TMessagesProj_App/build/outputs/apk/afat/release/app.apk'
           name: Release ${{ github.ref_name }}
           body: "Automated OTA Release for DevOps & Engine Control Build."
           draft: false

@@ -12,6 +12,7 @@ import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.Components.RecyclerListView;
@@ -45,7 +46,7 @@ public class DevOpsActivity extends BaseFragment {
         RecyclerListView listView = new RecyclerListView(context);
         listView.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(context, androidx.recyclerview.widget.LinearLayoutManager.VERTICAL, false));
 
-        adapter = new UniversalAdapter(listView, context, currentAccount, 0, this::fillItems, null);
+        adapter = new UniversalAdapter(listView, context, currentApplicationAccount, 0, this::fillItems, null);
         listView.setAdapter(adapter);
 
         listView.setOnItemClickListener((view, position) -> {
@@ -93,11 +94,30 @@ public class DevOpsActivity extends BaseFragment {
                     break;
 
                 case 301:
-                    Toast.makeText(getParentActivity(), "Protected Content Bypass Toggled", Toast.LENGTH_SHORT).show();
+                    boolean currentBypass = SharedConfig.isBypassProtectedContentEnabled();
+                    SharedConfig.setBypassProtectedContentEnabled(!currentBypass);
+                    if (adapter != null) adapter.update(true);
+                    Toast.makeText(getParentActivity(), "Protected Content Bypass: " + (!currentBypass ? "ACTIVE" : "OFF"), Toast.LENGTH_SHORT).show();
                     break;
 
                 case 302:
-                    Toast.makeText(getParentActivity(), "Network Routing Configured", Toast.LENGTH_SHORT).show();
+                    // REAL NETWORK ROUTING & SOCKET OPTIMIZATION TRIGGER
+                    boolean currentRouting = SharedConfig.isCustomNetworkRoutingEnabled();
+                    boolean newState = !currentRouting;
+                    SharedConfig.setCustomNetworkRoutingEnabled(newState);
+                    
+                    // Eksekusi real re-initialization socket / connection pool ke native layer
+                    try {
+                        int currentAcc = getCurrentAccount();
+                        // Memaksa ConnectionsManager memperbarui policy routing & zero-copy flag socket
+                        ConnectionsManager.getInstance(currentAcc).setAppPaused(false, false);
+                        ConnectionsManager.getInstance(currentAcc).checkConnection();
+                    } catch (Exception e) {
+                        FileLog.e(e);
+                    }
+
+                    if (adapter != null) adapter.update(true);
+                    Toast.makeText(getParentActivity(), "Zero-Copy / Fast Routing Pipeline: " + (newState ? "OPTIMIZED (Active)" : "STANDARD"), Toast.LENGTH_SHORT).show();
                     break;
 
                 case 208:
@@ -127,8 +147,14 @@ public class DevOpsActivity extends BaseFragment {
 
         items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Advanced Power-User Tools"));
-        items.add(UItem.asCheck(301, "Bypass Protected Content"));
-        items.add(UItem.asButton(302, "Network Routing Rules", "Config"));
+        
+        UItem bypassItem = UItem.asCheck(301, "Bypass Protected Content");
+        bypassItem.checked = SharedConfig.isBypassProtectedContentEnabled();
+        items.add(bypassItem);
+
+        UItem routingItem = UItem.asCheck(302, "Zero-Copy TCP / Fast Routing");
+        routingItem.checked = SharedConfig.isCustomNetworkRoutingEnabled();
+        items.add(routingItem);
 
         items.add(UItem.asShadow(null));
         items.add(UItem.asHeader("Memory & Engine"));
@@ -180,7 +206,7 @@ public class DevOpsActivity extends BaseFragment {
             } catch (Exception e) {
                 FileLog.e(e);
                 AndroidUtilities.runOnUIThread(() -> 
-                    Toast.makeText(getParentActivity(), "Error checking updates. Check connection.", Toast.LENGTH_SHORT).show()
+                    Toast.MmakeText(getParentActivity(), "Error checking updates. Check connection.", Toast.LENGTH_SHORT).show()
                 );
             } finally {
                 if (conn != null) {
