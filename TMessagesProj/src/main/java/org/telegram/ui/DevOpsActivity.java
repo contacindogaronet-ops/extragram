@@ -247,7 +247,7 @@ public class DevOpsActivity extends BaseFragment {
                     Toast.makeText(getParentActivity(), "Error checking updates. Check connection.", Toast.LENGTH_SHORT).show()
                 );
             } finally {
-                if (conn != `null`) {
+                if (conn != null) {
                     try {
                         conn.disconnect();
                     } catch (Exception ignored) {}
