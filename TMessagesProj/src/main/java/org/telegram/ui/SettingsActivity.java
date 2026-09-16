@@ -189,7 +189,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
 
     private int versionViewPressCount = 0;
     private static final int networkOptimizationRow = 150;
-
+    private static final int devOpsRow = 151;
     public SettingsActivity() {
         this(null);
     }
@@ -740,7 +740,7 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
             items.add(UItem.asShadow(null));
         }
 
-        items.add(SettingCell.Factory.of(networkOptimizationRow,
+        items.add(SettingCell.Factory.of(150,
             IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom,
             R.drawable.msg_settings, getString(R.string.NetworkStreamOptimization),
             SharedConfig.isNetworkOptimizationEnabled() ? "On" : "Off"));
@@ -749,6 +749,8 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
         items.add(SettingCell.Factory.of(200,
             IconBackgroundColors.ORANGE.top, IconBackgroundColors.ORANGE.bottom,
             R.drawable.msg_settings, "DevOps & Engine Control", ""));
+
+        items.add(SettingCell.Factory.of(201, IconBackgroundColors.BLUE.top, IconBackgroundColors.BLUE.bottom, R.drawable.msg_network, "Network & Proxy Engine", ""));
 
         if (false) {
         items.add(UItem.asHeader(getString(R.string.SettingsHelp)));
@@ -850,6 +852,9 @@ public class SettingsActivity extends BaseFragment implements NotificationCenter
                 break;
             case 200:
                 presentFragment(new DevOpsActivity());
+                break;
+            case 99:
+                presentSettingFragment(new NetworkEngineActivity());
                 break;
             case 9:
                 presentSettingFragment(new LiteModeSettingsActivity());
