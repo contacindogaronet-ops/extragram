@@ -39507,7 +39507,6 @@ public class ChatActivity extends BaseFragment implements
              return messageObject != null
                  && messageObject.messageOwner != null
                  && chatMode != MODE_SCHEDULED
-                 && !messageObject.isPeerNoForwards()
                  && !messageObject.messageOwner.noforwards
                  && messageObject.type != MessageObject.TYPE_PAID_MEDIA;
         }
