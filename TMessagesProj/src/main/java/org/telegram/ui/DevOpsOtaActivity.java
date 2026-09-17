@@ -73,7 +73,7 @@ public class DevOpsOtaActivity extends BaseFragment {
     public boolean onFragmentCreate() {
         super.onFragmentCreate();
         rebuildUIModel();
-        checkForGithubRelease(false); // Otomatis cek saat dibuka
+        checkForGithubRelease(false);
         return true;
     }
 
@@ -225,7 +225,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                 connection.connect();
 
                 int fileLength = connection.getContentLength();
-                if (fileLength <= 0) fileLength = 1024 * 1024 * 75; // Fallback estimate
+                if (fileLength <= 0) fileLength = 1024 * 1024 * 75;
 
                 File downloadedApkFile = new File(context.getExternalFilesDir(null), "extragram_update.apk");
                 InputStream inputStream = connection.getInputStream();
@@ -330,11 +330,11 @@ public class DevOpsOtaActivity extends BaseFragment {
             } else if (viewType == TYPE_STATUS_CARD) {
                 LinearLayout layout = new LinearLayout(mContext);
                 layout.setOrientation(LinearLayout.VERTICAL);
-                layout.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(16), AndroidUtilities.dp(20), AndroidUtilities.dp(16));
+                layout.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(16));
                 layout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                 
                 TextView titleTv = new TextView(mContext);
-                titleTv.setTextSize(17);
+                titleTv.setTextSize(16);
                 titleTv.setTypeface(null, android.graphics.Typeface.BOLD);
                 titleTv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
                 titleTv.setTag("title");
@@ -343,7 +343,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                 TextView subTv = new TextView(mContext);
                 subTv.setTextSize(14);
                 subTv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
-                subTv.setPadding(0, AndroidUtilities.dp(6), 0, 0);
+                subTv.setPadding(0, AndroidUtilities.dp(4), 0, 0);
                 subTv.setTag("subtitle");
                 layout.addView(subTv);
 
@@ -351,18 +351,34 @@ public class DevOpsOtaActivity extends BaseFragment {
             } else if (viewType == TYPE_CHANGELOG) {
                 LinearLayout layout = new LinearLayout(mContext);
                 layout.setOrientation(LinearLayout.VERTICAL);
-                layout.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(12), AndroidUtilities.dp(20), AndroidUtilities.dp(12));
+                
+                // Tambahkan margin top supaya ada jarak dan tidak menumpuk dengan card di atasnya
+                RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+                params.setMargins(0, AndroidUtilities.dp(8), 0, 0);
+                layout.setLayoutParams(params);
+
+                layout.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(14));
                 layout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
 
                 TextView subTv = new TextView(mContext);
-                subTv.setTextSize(14);
+                subTv.setTextSize(13);
                 subTv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
                 subTv.setTag("changelog_text");
                 layout.addView(subTv);
 
                 view = layout;
             } else {
+                LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+                btnParams.setMargins(AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(16));
+
                 TextView btn = new TextView(mContext);
+                btn.setLayoutParams(btnParams);
                 btn.setGravity(android.view.Gravity.CENTER);
                 btn.setTextSize(15);
                 btn.setTypeface(null, android.graphics.Typeface.BOLD);
