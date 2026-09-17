@@ -129,6 +129,22 @@ public class UserConfig extends BaseController {
                 genericAnimationsStickerPack = preferences.getString("genericAnimationsStickerPack", null);
                 lastUpdatedGenericAnimations = preferences.getLong("lastUpdatedGenericAnimations", 0);
 
+                clientUserId = preferences.getInt("userId", 0);
+                String userString = preferences.getString("user", null);
+                if (userString != null) {
+                    try {
+                        byte[] dat = Base64.decode(userString, Base64.DEFAULT);
+                        if (dat != null) {
+                            SerializedData data = new SerializedData(dat);
+                            currentUser = TLRPC.User.TLdeserialize(data, data.readInt32(false), false);
+                            data.cleanup();
+                        }
+                    } catch (Exception e) {
+                        FileLog.e(e);
+                    }
+                }
+
+
                 try {
                     String terms = preferences.getString("terms", null);
                     if (terms != null) {
