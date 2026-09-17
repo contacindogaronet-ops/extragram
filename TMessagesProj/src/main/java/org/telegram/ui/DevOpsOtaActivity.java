@@ -121,62 +121,26 @@ public class DevOpsOtaActivity extends BaseFragment {
         listView.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
         listView.setAdapter(listAdapter);
 
+        listView.setOnItemClickListener((view, position) -> {
+            if (items.get(position).viewType == TYPE_ACTION_BUTTON) {
+                Context ctx = getParentActivity();
+                if (ctx == null) ctx = context;
+                
+                if (isDownloadedReady) {
+                    triggerApkInstallation(ctx);
+                } else if (!isDownloading && !isChecking) {
+                    if (directApkDownloadUrl.isEmpty()) {
+                        checkForGithubRelease(true);
+                    } else {
+                        startOtaDownloadPipeline(ctx);
+                    }
+                }
+            }
+        });
+
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         return fragmentView;
-    }
-    // --- ADAPTER BARU (Ganti seluruh class ListAdapter lama dengan ini) ---
-    private class ListAdapter extends RecyclerListView.SelectionAdapter {
-        private final Context mContext;
-
-        public ListAdapter(Context context) {
-            mContext = context;
-        }
-
-        @Override
-        public int getItemCount() {
-            return 1; // Cuma 1 card utama
-        }
-
-        @Override
-        public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            return false;
-        }
-
-        @Override
-        public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            // Langsung inflate file XML custom card kita
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.devops_ota_card, parent, false);
-            return new RecyclerListView.Holder(view);
-        }
-
-        @Override
-        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-            View view = holder.itemView;
-
-            TextView titleView = view.findViewById(R.id.ota_title_view);
-            TextView descView = view.findViewById(R.id.ota_desc_view);
-            TextView changelogView = view.findViewById(R.id.ota_changelog_view);
-            FrameLayout actionButton = view.findViewById(R.id.ota_action_button);
-
-            if (titleView != null) titleView.setText("Rilis Terbaru: " + versionTitle);
-            if (descView != null) descView.setText(versionStatus);
-            if (changelogView != null) changelogView.setText("• Catatan Rilis / Changelog:\n" + releaseBody);
-
-            if (actionButton != null) {
-                actionButton.setOnClickListener(v -> {
-                    if (isDownloadedReady) {
-                        triggerApkInstallation(mContext);
-                    } else if (!isDownloading && !isChecking) {
-                        if (directApkDownloadUrl.isEmpty()) {
-                            checkForGithubRelease(true);
-                        } else {
-                            startOtaDownloadPipeline(mContext);
-                        }
-                    }
-                });
-            }
-        }
     }
 
     private void checkForGithubRelease(boolean showToast) {
@@ -221,7 +185,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                         versionTitle = "Rilis Terbaru: " + tagName;
                         versionStatus = directApkDownloadUrl.isEmpty() ? "File APK belum dilampirkan di asset rilis." : "APK siap diunduh dari repository.";
                         refreshUI();
-                        if (showToast) {
+                        if (showToast && getParentActivity() != null) {
                             Toast.makeText(getParentActivity(), "Berhasil memuat rilis " + tagName, Toast.LENGTH_SHORT).show();
                         }
                     });
@@ -235,7 +199,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                     versionTitle = "Gagal Memeriksa Pembaruan";
                     versionStatus = "Periksa koneksi internet Anda.";
                     refreshUI();
-                    if (showToast) {
+                    if (showToast && getParentActivity() != null) {
                         Toast.makeText(getParentActivity(), "Gagal terhubung ke GitHub API.", Toast.LENGTH_LONG).show();
                     }
                 });
