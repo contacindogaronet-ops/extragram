@@ -124,7 +124,7 @@ public class DevOpsOtaActivity extends BaseFragment {
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
         return fragmentView;
-       }
+    }
     // --- ADAPTER BARU (Ganti seluruh class ListAdapter lama dengan ini) ---
     private class ListAdapter extends RecyclerListView.SelectionAdapter {
         private final Context mContext;
@@ -177,9 +177,6 @@ public class DevOpsOtaActivity extends BaseFragment {
                 });
             }
         }
-    }
-
-        return fragmentView;
     }
 
     private void checkForGithubRelease(boolean showToast) {

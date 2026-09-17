@@ -3,16 +3,14 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="? اندرويد:attr/windowBackgroundWhite"> <!-- Atau background warna aman -->
+    android:padding="12dp">
 
-    <!-- Card Container -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp"
-        android:background="@drawable/card_background"> <!-- Ganti pakai card_background bawaan telegram -->
+        android:background="@android:color/white">
 
         <TextView
             android:id="@+id/ota_title_view"
