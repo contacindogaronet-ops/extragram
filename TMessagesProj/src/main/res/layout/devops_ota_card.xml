@@ -38,7 +38,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:text="• Catatan Rilis / Changelog:\nAutomated OTA Release for DevOps & Engine Control Build."
+            android:text="• Catatan Rilis / Changelog:\nAutomated OTA Release for DevOps &amp; Engine Control Build."
             android:textSize="13sp"
             android:textColor="?attr/windowBackgroundWhiteGrayText"/>
 
