@@ -1,30 +1,36 @@
 package org.telegram.ui;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.R;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
-import org.telegram.ui.Cells.HeaderCell;
-import org.telegram.ui.Cells.ShadowSectionCell;
-import org.telegram.ui.Cells.TextCell;
-import org.telegram.ui.Cells.TextDetailCell;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -35,73 +41,66 @@ public class DevOpsOtaActivity extends BaseFragment {
     private RecyclerListView listView;
     private final ArrayList<Item> items = new ArrayList<>();
 
-    // State Download & OTA
+    // State Manajemen OTA
+    private boolean isChecking = false;
     private boolean isDownloading = false;
+    private boolean isDownloadedReady = false;
     private int downloadProgress = 0;
-    private String statusText = "Stable v3.7.2 - Up to date";
+    
+    private String versionTitle = "Pemeriksaan Sistem";
+    private String versionStatus = "Tekan tombol di bawah untuk memeriksa pembaruan dari GitHub.";
+    private String releaseBody = "Belum ada catatan rilis yang dimuat.";
+    private String directApkDownloadUrl = "";
 
-    // Row IDs
-    private static final int rowHeaderInfo = 1;
-    private static final int rowStatusDetail = 2;
-    private static final int rowActionCheck = 3;
-    private static final int rowActionDownload = 4;
-    private static final int rowShadow = 5;
+    private static final int TYPE_HEADER = 0;
+    private static final int TYPE_STATUS_CARD = 1;
+    private static final int TYPE_CHANGELOG = 2;
+    private static final int TYPE_ACTION_BUTTON = 3;
 
     private static class Item {
-        public int id;
         public int viewType;
         public String title;
         public String subtitle;
 
-        private Item(int id, int viewType, String title, String subtitle) {
-            this.id = id;
+        public Item(int viewType, String title, String subtitle) {
             this.viewType = viewType;
             this.title = title;
             this.subtitle = subtitle;
-        }
-
-        public static Item asHeader(String title) {
-            return new Item(0, 1, title, null);
-        }
-
-        public static Item asDetail(int id, String title, String subtitle) {
-            return new Item(id, 2, title, subtitle);
-        }
-
-        public static Item asAction(int id, String title) {
-            return new Item(id, 0, title, null);
-        }
-
-        public static Item asShadow() {
-            return new Item(0, 3, null, null);
         }
     }
 
     @Override
     public boolean onFragmentCreate() {
         super.onFragmentCreate();
-        updateRows();
+        rebuildUIModel();
+        checkForGithubRelease(false); // Otomatis cek saat dibuka
         return true;
     }
 
-    private void updateRows() {
+    private void rebuildUIModel() {
         items.clear();
-        items.add(Item.asHeader("FIRMWARE & OTA PIPELINE"));
-        items.add(Item.asDetail(rowStatusDetail, "Current Engine Status", statusText));
-        items.add(Item.asAction(rowActionCheck, "Check for Updates via API"));
-        
-        // Dynamic label based on download state
-        String downloadLabel = isDownloading ? "Downloading Update (" + downloadProgress + "%)..." : "Download & Apply Latest Build";
-        items.add(Item.asAction(rowActionDownload, downloadLabel));
-        
-        items.add(Item.asShadow());
+        items.add(new Item(TYPE_HEADER, "GITHUB RELEASE PIPELINE", null));
+        items.add(new Item(TYPE_STATUS_CARD, versionTitle, versionStatus));
+        items.add(new Item(TYPE_CHANGELOG, "• Catatan Rilis / Changelog:\n" + releaseBody, "GitHub Latest Tag"));
+
+        String actionTitle;
+        if (isDownloadedReady) {
+            actionTitle = "Pasang Pembaruan Sekarang (Install)";
+        } else if (isDownloading) {
+            actionTitle = "Mengunduh APK... (" + downloadProgress + "%)";
+        } else if (isChecking) {
+            actionTitle = "Memeriksa GitHub API...";
+        } else {
+            actionTitle = "Periksa Pembaruan / Unduh APK";
+        }
+        items.add(new Item(TYPE_ACTION_BUTTON, actionTitle, null));
     }
 
     @Override
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
         actionBar.setAllowOverlayTitle(true);
-        actionBar.setTitle("OTA Build & Update Hub");
+        actionBar.setTitle("GitHub OTA Manager");
 
         actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
             @Override
@@ -128,13 +127,15 @@ public class DevOpsOtaActivity extends BaseFragment {
             if (position < 0 || position >= items.size()) return;
             Item item = items.get(position);
 
-            if (item.id == rowActionCheck) {
-                checkForUpdatesRemote();
-            } else if (item.id == rowActionDownload) {
-                if (!isDownloading) {
-                    startOtaDownloadPipeline(context);
-                } else {
-                    Toast.makeText(context, "Download is already in progress...", Toast.LENGTH_SHORT).show();
+            if (item.viewType == TYPE_ACTION_BUTTON) {
+                if (isDownloadedReady) {
+                    triggerApkInstallation(context);
+                } else if (!isDownloading && !isChecking) {
+                    if (directApkDownloadUrl.isEmpty()) {
+                        checkForGithubRelease(true);
+                    } else {
+                        startOtaDownloadPipeline(context);
+                    }
                 }
             }
         });
@@ -142,48 +143,93 @@ public class DevOpsOtaActivity extends BaseFragment {
         return fragmentView;
     }
 
-    private void checkForUpdatesRemote() {
-        statusText = "Checking repository mirrors...";
-        updateRows();
-        if (listAdapter != null) {
-            listAdapter.notifyDataSetChanged();
-        }
+    private void checkForGithubRelease(boolean showToast) {
+        isChecking = true;
+        refreshUI();
 
-        // Simulasi network check yang bersih & responsif
-        AndroidUtilities.runOnUIThread(() -> {
-            statusText = "New build available: v3.8.0-beta";
-            updateRows();
-            if (listAdapter != null) {
-                listAdapter.notifyDataSetChanged();
+        new Thread(() -> {
+            try {
+                URL url = new URL("https://api.github.com/repos/contacindogaronet-ops/extragram/releases/latest");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("User-Agent", "ExtraGram-OTA-Client");
+                conn.connect();
+
+                if (conn.getResponseCode() == 200) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    reader.close();
+
+                    JSONObject json = new JSONObject(sb.toString());
+                    String tagName = json.optString("tag_name", "v13.x");
+                    releaseBody = json.optString("body", "Tidak ada deskripsi rilis.");
+                    
+                    JSONArray assets = json.optJSONArray("assets");
+                    if (assets != null && assets.length() > 0) {
+                        for (int i = 0; i < assets.length(); i++) {
+                            JSONObject asset = assets.getJSONObject(i);
+                            String name = asset.optString("name", "");
+                            if (name.endsWith(".apk")) {
+                                directApkDownloadUrl = asset.optString("browser_download_url", "");
+                                break;
+                            }
+                        }
+                    }
+
+                    AndroidUtilities.runOnUIThread(() -> {
+                        isChecking = false;
+                        versionTitle = "Rilis Terbaru: " + tagName;
+                        versionStatus = directApkDownloadUrl.isEmpty() ? "File APK belum dilampirkan di asset rilis." : "APK siap diunduh dari repository.";
+                        refreshUI();
+                        if (showToast) {
+                            Toast.makeText(getParentActivity(), "Berhasil memuat rilis " + tagName, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                } else {
+                    throw new Exception("HTTP Error Code: " + conn.getResponseCode());
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+                AndroidUtilities.runOnUIThread(() -> {
+                    isChecking = false;
+                    versionTitle = "Gagal Memeriksa Pembaruan";
+                    versionStatus = "Periksa koneksi internet Anda.";
+                    refreshUI();
+                    if (showToast) {
+                        Toast.makeText(getParentActivity(), "Gagal terhubung ke GitHub API.", Toast.LENGTH_LONG).show();
+                    }
+                });
             }
-            Toast.makeText(getParentActivity(), "Update found!", Toast.LENGTH_SHORT).show();
-        }, 1200);
+        }).start();
     }
 
     private void startOtaDownloadPipeline(Context context) {
-        isDownloading = true;
-        downloadProgress = 0;
-        statusText = "Downloading package...";
-        updateRows();
-        if (listAdapter != null) {
-            listAdapter.notifyDataSetChanged();
+        if (directApkDownloadUrl.isEmpty()) {
+            Toast.makeText(context, "URL Download APK tidak ditemukan!", Toast.LENGTH_SHORT).show();
+            return;
         }
 
-        // Background worker thread untuk stream download tanpa blocking UI thread
+        isDownloading = true;
+        downloadProgress = 0;
+        versionStatus = "Mengunduh app.apk dari GitHub Releases...";
+        refreshUI();
+
         new Thread(() -> {
             try {
-                // Contoh endpoint APK/Payload OTA modular
-                String fileUrl = "https://raw.githubusercontent.com/contacindogaronet-ops/exteragram/main/payload.bin";
-                URL url = new URL(fileUrl);
+                URL url = new URL(directApkDownloadUrl);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.connect();
 
                 int fileLength = connection.getContentLength();
-                if (fileLength <= 0) fileLength = 1024 * 1024 * 15; // Fallback estimate 15MB
+                if (fileLength <= 0) fileLength = 1024 * 1024 * 75; // Fallback estimate
 
-                File outputFile = new File(context.getExternalFilesDir(null), "exteragram_update.apk");
+                File downloadedApkFile = new File(context.getExternalFilesDir(null), "extragram_update.apk");
                 InputStream inputStream = connection.getInputStream();
-                FileOutputStream outputStream = new FileOutputStream(outputFile);
+                FileOutputStream outputStream = new FileOutputStream(downloadedApkFile);
 
                 byte[] buffer = new byte[8192];
                 long totalBytesRead = 0;
@@ -194,14 +240,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                     downloadProgress = (int) ((totalBytesRead * 100) / fileLength);
                     if (downloadProgress > 100) downloadProgress = 100;
 
-                    // Update UI secara berkala lewat main thread
-                    AndroidUtilities.runOnUIThread(() -> {
-                        updateRows();
-                        if (listAdapter != null) {
-                            listAdapter.notifyDataSetChanged();
-                        }
-                    });
-
+                    AndroidUtilities.runOnUIThread(this::refreshUI);
                     outputStream.write(buffer, 0, count);
                 }
 
@@ -211,12 +250,10 @@ public class DevOpsOtaActivity extends BaseFragment {
 
                 AndroidUtilities.runOnUIThread(() -> {
                     isDownloading = false;
-                    statusText = "Download complete. Ready to install.";
-                    updateRows();
-                    if (listAdapter != null) {
-                        listAdapter.notifyDataSetChanged();
-                    }
-                    Toast.makeText(context, "OTA Package downloaded successfully!", Toast.LENGTH_LONG).show();
+                    isDownloadedReady = true;
+                    versionStatus = "Download selesai. Siap dipasang.";
+                    refreshUI();
+                    Toast.makeText(context, "APK OTA Berhasil Diunduh!", Toast.LENGTH_LONG).show();
                 });
 
             } catch (Exception e) {
@@ -224,15 +261,44 @@ public class DevOpsOtaActivity extends BaseFragment {
                 AndroidUtilities.runOnUIThread(() -> {
                     isDownloading = false;
                     downloadProgress = 0;
-                    statusText = "Download failed: Check network configuration";
-                    updateRows();
-                    if (listAdapter != null) {
-                        listAdapter.notifyDataSetChanged();
-                    }
-                    Toast.makeText(context, "Download Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    versionStatus = "Download gagal: " + e.getLocalizedMessage();
+                    refreshUI();
+                    Toast.makeText(context, "Gagal mengunduh file APK.", Toast.LENGTH_LONG).show();
                 });
             }
         }).start();
+    }
+
+    private void triggerApkInstallation(Context context) {
+        File downloadedApkFile = new File(context.getExternalFilesDir(null), "extragram_update.apk");
+        if (!downloadedApkFile.exists()) {
+            Toast.makeText(context, "File APK tidak ditemukan!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            Uri apkUri;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                apkUri = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", downloadedApkFile);
+                intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } else {
+                apkUri = Uri.fromFile(downloadedApkFile);
+                intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Exception e) {
+            FileLog.e(e);
+            Toast.makeText(context, "Gagal membuka installer: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void refreshUI() {
+        rebuildUIModel();
+        if (listAdapter != null) {
+            listAdapter.notifyDataSetChanged();
+        }
     }
 
     private class ListAdapter extends RecyclerListView.SelectionAdapter {
@@ -249,24 +315,61 @@ public class DevOpsOtaActivity extends BaseFragment {
 
         @Override
         public boolean isEnabled(RecyclerView.ViewHolder holder) {
-            int type = holder.getItemViewType();
-            return type == 0; // Hanya item action yang bisa diklik
+            return holder.getItemViewType() == TYPE_ACTION_BUTTON;
         }
 
         @Override
         public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             View view;
-            if (viewType == 1) {
-                view = new HeaderCell(mContext);
-                view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-            } else if (viewType == 2) {
-                view = new TextDetailCell(mContext);
-                view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-            } else if (viewType == 3) {
-                view = new ShadowSectionCell(mContext);
+            if (viewType == TYPE_HEADER) {
+                TextView tv = new TextView(mContext);
+                tv.setTextSize(13);
+                tv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader));
+                tv.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(16), AndroidUtilities.dp(20), AndroidUtilities.dp(8));
+                view = tv;
+            } else if (viewType == TYPE_STATUS_CARD) {
+                LinearLayout layout = new LinearLayout(mContext);
+                layout.setOrientation(LinearLayout.VERTICAL);
+                layout.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(16), AndroidUtilities.dp(20), AndroidUtilities.dp(16));
+                layout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+                
+                TextView titleTv = new TextView(mContext);
+                titleTv.setTextSize(17);
+                titleTv.setTypeface(null, android.graphics.Typeface.BOLD);
+                titleTv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+                titleTv.setTag("title");
+                layout.addView(titleTv);
+
+                TextView subTv = new TextView(mContext);
+                subTv.setTextSize(14);
+                subTv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+                subTv.setPadding(0, AndroidUtilities.dp(6), 0, 0);
+                subTv.setTag("subtitle");
+                layout.addView(subTv);
+
+                view = layout;
+            } else if (viewType == TYPE_CHANGELOG) {
+                LinearLayout layout = new LinearLayout(mContext);
+                layout.setOrientation(LinearLayout.VERTICAL);
+                layout.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(12), AndroidUtilities.dp(20), AndroidUtilities.dp(12));
+                layout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+
+                TextView subTv = new TextView(mContext);
+                subTv.setTextSize(14);
+                subTv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+                subTv.setTag("changelog_text");
+                layout.addView(subTv);
+
+                view = layout;
             } else {
-                view = new TextCell(mContext);
-                view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+                TextView btn = new TextView(mContext);
+                btn.setGravity(android.view.Gravity.CENTER);
+                btn.setTextSize(15);
+                btn.setTypeface(null, android.graphics.Typeface.BOLD);
+                btn.setTextColor(Theme.getColor(Theme.key_featuredStickers_buttonText));
+                btn.setBackgroundColor(Theme.getColor(Theme.key_featuredStickers_addButton));
+                btn.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(14), AndroidUtilities.dp(20), AndroidUtilities.dp(14));
+                view = btn;
             }
             return new RecyclerListView.Holder(view);
         }
@@ -274,14 +377,19 @@ public class DevOpsOtaActivity extends BaseFragment {
         @Override
         public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
             Item item = items.get(position);
-            int viewType = holder.getItemViewType();
+            int type = holder.getItemViewType();
 
-            if (viewType == 1) {
-                ((HeaderCell) holder.itemView).setText(item.title);
-            } else if (viewType == 2) {
-                ((TextDetailCell) holder.itemView).setTextAndValue(item.title, item.subtitle, true);
-            } else if (viewType == 0) {
-                ((TextCell) holder.itemView).setText(item.title, true);
+            if (type == TYPE_HEADER) {
+                ((TextView) holder.itemView).setText(item.title);
+            } else if (type == TYPE_STATUS_CARD) {
+                ViewGroup group = (ViewGroup) holder.itemView;
+                ((TextView) group.findViewWithTag("title")).setText(item.title);
+                ((TextView) group.findViewWithTag("subtitle")).setText(item.subtitle);
+            } else if (type == TYPE_CHANGELOG) {
+                ViewGroup group = (ViewGroup) holder.itemView;
+                ((TextView) group.findViewWithTag("changelog_text")).setText(item.title);
+            } else if (type == TYPE_ACTION_BUTTON) {
+                ((TextView) holder.itemView).setText(item.title);
             }
         }
 
