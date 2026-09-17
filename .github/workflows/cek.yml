@@ -1,6 +1,6 @@
 name: Quick Code Check
 
-off:
+on:
   push:
     branches: [ "main", "master" ]
   workflow_dispatch:
@@ -26,4 +26,4 @@ jobs:
         run: chmod +x gradlew
 
       - name: Compile Java Check
-        run: ./gradlew :TMessagesProj:compileReleaseJavaWithJavac --no-daemon
+        run: ./gradlew :TMessagesProj_App:compileReleaseJavaWithJavac --no-daemon

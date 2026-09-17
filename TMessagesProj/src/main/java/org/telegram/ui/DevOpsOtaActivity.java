@@ -123,22 +123,87 @@ public class DevOpsOtaActivity extends BaseFragment {
 
         frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        listView.setOnItemClickListener((view, position) -> {
-            if (position < 0 || position >= items.size()) return;
-            Item item = items.get(position);
+    @Override
+    public View createView(Context context) {
+        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        actionBar.setAllowOverlayTitle(true);
+        actionBar.setTitle("GitHub OTA Manager");
 
-            if (item.viewType == TYPE_ACTION_BUTTON) {
-                if (isDownloadedReady) {
-                    triggerApkInstallation(context);
-                } else if (!isDownloading && !isChecking) {
-                    if (directApkDownloadUrl.isEmpty()) {
-                        checkForGithubRelease(true);
-                    } else {
-                        startOtaDownloadPipeline(context);
-                    }
+        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+            @Override
+            public void onItemClick(int id) {
+                if (id == -1) {
+                    finishFragment();
                 }
             }
         });
+
+        listAdapter = new ListAdapter(context);
+
+        fragmentView = new FrameLayout(context);
+        FrameLayout frameLayout = (FrameLayout) fragmentView;
+        frameLayout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+
+        listView = new RecyclerListView(context);
+        listView.setLayoutManager(new LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false));
+        listView.setAdapter(listAdapter);
+
+        frameLayout.addView(listView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
+
+    // --- ADAPTER BARU (Ganti seluruh class ListAdapter lama dengan ini) ---
+    private class ListAdapter extends RecyclerListView.SelectionAdapter {
+        private final Context mContext;
+
+        public ListAdapter(Context context) {
+            mContext = context;
+        }
+
+        @Override
+        public int getItemCount() {
+            return 1; // Cuma 1 card utama
+        }
+
+        @Override
+        public boolean isEnabled(RecyclerView.ViewHolder holder) {
+            return false;
+        }
+
+        @Override
+        public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            // Langsung inflate file XML custom card kita
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.devops_ota_card, parent, false);
+            return new RecyclerListView.Holder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+            View view = holder.itemView;
+
+            TextView titleView = view.findViewById(R.id.ota_title_view);
+            TextView descView = view.findViewById(R.id.ota_desc_view);
+            TextView changelogView = view.findViewById(R.id.ota_changelog_view);
+            FrameLayout actionButton = view.findViewById(R.id.ota_action_button);
+
+            if (titleView != null) titleView.setText("Rilis Terbaru: " + versionTitle);
+            if (descView != null) descView.setText(versionStatus);
+            if (changelogView != null) changelogView.setText("• Catatan Rilis / Changelog:\n" + releaseBody);
+
+            if (actionButton != null) {
+                actionButton.setOnClickListener(v -> {
+                    if (isDownloadedReady) {
+                        triggerApkInstallation(mContext);
+                    } else if (!isDownloading && !isChecking) {
+                        if (directApkDownloadUrl.isEmpty()) {
+                            checkForGithubRelease(true);
+                        } else {
+                            startOtaDownloadPipeline(mContext);
+                        }
+                    }
+                });
+            }
+        }
+    }
 
         return fragmentView;
     }
