@@ -83,6 +83,77 @@ public class UserConfig extends BaseController {
     LongSparseArray<SaveToGallerySettingsHelper.DialogException> chanelSaveGalleryExceptions;
     LongSparseArray<SaveToGallerySettingsHelper.DialogException> groupsSaveGalleryExceptions;
 
+    public void loadConfig() {
+        synchronized (sync) {
+            if (configLoaded) {
+                return;
+            }
+            try {
+                SharedPreferences preferences = getPreferences();
+                if (preferences == null) {
+                    configLoaded = true;
+                    return;
+                }
+
+                if (currentAccount == 0) {
+                    selectedAccount = preferences.getInt("selectedAccount", 0);
+                }
+                registeredForPush = preferences.getBoolean("registeredForPush", false);
+                lastSendMessageId = preferences.getInt("lastSendMessageId", -210000);
+                contactsSavedCount = preferences.getInt("contactsSavedCount", 0);
+                lastBroadcastId = preferences.getInt("lastBroadcastId", -1);
+                lastContactsSyncTime = preferences.getInt("lastContactsSyncTime", (int) (System.currentTimeMillis() / 1000));
+                lastHintsSyncTime = preferences.getInt("lastHintsSyncTime", (int) (System.currentTimeMillis() / 1000));
+                draftsLoaded = preferences.getBoolean("draftsLoaded", false);
+                unreadDialogsLoaded = preferences.getBoolean("unreadDialogsLoaded", false);
+                contactsReimported = preferences.getBoolean("contactsReimported", false);
+                ratingLoadTime = preferences.getInt("ratingLoadTime", 0);
+                botRatingLoadTime = preferences.getInt("botRatingLoadTime", 0);
+                botGuestRatingLoadTime = preferences.getInt("botGuestRatingLoadTime", 0);
+                webappRatingLoadTime = preferences.getInt("webappRatingLoadTime", 0);
+                loginTime = preferences.getInt("loginTime", currentAccount);
+                syncContacts = preferences.getBoolean("syncContacts", true);
+                showCallsTab = preferences.getBoolean("showCallsTab", false);
+                suggestContacts = preferences.getBoolean("suggestContacts", true);
+                hasSecureData = preferences.getBoolean("hasSecureData", false);
+                notificationsSettingsLoaded = preferences.getBoolean("notificationsSettingsLoaded4", preferences.getBoolean("notificationsSettingsLoaded3", false));
+                notificationsSignUpSettingsLoaded = preferences.getBoolean("notificationsSignUpSettingsLoaded", false);
+                autoDownloadConfigLoadTime = preferences.getLong("autoDownloadConfigLoadTime", 0);
+                hasValidDialogLoadIds = preferences.contains("2dialogsLoadOffsetId") || preferences.contains("dialogsLoadOffsetId");
+                sharingMyLocationUntil = preferences.getInt("sharingMyLocationUntil", 0);
+                lastMyLocationShareTime = preferences.getInt("lastMyLocationShareTime", 0);
+                filtersLoaded = preferences.getBoolean("filtersLoaded", false);
+                premiumGiftsStickerPack = preferences.getString("premiumGiftsStickerPack", null);
+                lastUpdatedPremiumGiftsStickerPack = preferences.getLong("lastUpdatedPremiumGiftsStickerPack", 0);
+
+                genericAnimationsStickerPack = preferences.getString("genericAnimationsStickerPack", null);
+                lastUpdatedGenericAnimations = preferences.getLong("lastUpdatedGenericAnimations", 0);
+
+                try {
+                    String terms = preferences.getString("terms", null);
+                    if (terms != null) {
+                        byte[] arr = Base64.decode(terms, Base64.DEFAULT);
+                        if (arr != null) {
+                            SerializedData data = new SerializedData(arr);
+                            unacceptedTermsOfService = TLRPC.TL_help_termsOfService.TLdeserialize(data, data.readInt32(false), false);
+                            data.cleanup();
+                        }
+                    }
+                } catch (Exception e) {
+                    FileLog.e(e);
+                }
+
+                migrateOffsetId = preferences.getInt("6migrateOffsetId", 0);
+                
+                // Tandai config sukses dimuat
+                configLoaded = true;
+
+            } catch (Exception e) {
+                FileLog.e("Fatal: Error loading UserConfig, bypassing reset to prevent logout loop", e);
+                configLoaded = true; // Paksa true agar upstream tidak mereset sesi
+            }
+        }
+    }
 
     private static volatile UserConfig[] Instance = new UserConfig[UserConfig.MAX_ACCOUNT_COUNT];
     public static UserConfig getInstance(int num) {
@@ -191,8 +262,8 @@ public class UserConfig extends BaseController {
                             unacceptedTermsOfService.serializeToStream(data);
                             editor.putString("terms", Base64.encodeToString(data.toByteArray(), Base64.DEFAULT));
                             data.cleanup();
-                        } catch (Exception ignore) {
-
+                        } catch (Exception e) {
+                            FileLog.e("Error serializing unacceptedTermsOfService", e);
                         }
                     } else {
                         editor.remove("terms");
@@ -201,30 +272,43 @@ public class UserConfig extends BaseController {
                     SharedConfig.saveConfig();
 
                     if (tmpPassword != null) {
-                        SerializedData data = new SerializedData();
-                        tmpPassword.serializeToStream(data);
-                        String string = Base64.encodeToString(data.toByteArray(), Base64.DEFAULT);
-                        editor.putString("tmpPassword", string);
-                        data.cleanup();
+                        try {
+                            SerializedData data = new SerializedData();
+                            tmpPassword.serializeToStream(data);
+                            String string = Base64.encodeToString(data.toByteArray(), Base64.DEFAULT);
+                            editor.putString("tmpPassword", string);
+                            data.cleanup();
+                        } catch (Exception e) {
+                            FileLog.e("Error serializing tmpPassword", e);
+                        }
                     } else {
                         editor.remove("tmpPassword");
                     }
 
                     if (currentUser != null) {
                         if (withFile) {
-                            SerializedData data = new SerializedData();
-                            currentUser.serializeToStream(data);
-                            String string = Base64.encodeToString(data.toByteArray(), Base64.DEFAULT);
-                            editor.putString("user", string);
-                            data.cleanup();
+                            try {
+                                SerializedData data = new SerializedData();
+                                currentUser.serializeToStream(data);
+                                String string = Base64.encodeToString(data.toByteArray(), Base64.DEFAULT);
+                                editor.putString("user", string);
+                                data.cleanup();
+                            } catch (Exception e) {
+                                FileLog.e("Fatal: Error serializing currentUser session data", e);
+                            }
                         }
                     } else {
                         editor.remove("user");
                     }
 
-                    editor.apply();
+                    // Gunakan commit() agar sinkron dan aman tertulis ke storage fisik
+                    boolean success = editor.commit();
+                    if (!success) {
+                        FileLog.e("Warning: SharedPreferences editor.commit() failed for UserConfig!");
+                    }
+
                 } catch (Exception e) {
-                    FileLog.e(e);
+                    FileLog.e("Fatal error in saveConfig synchronized block", e);
                 }
             }
         });
