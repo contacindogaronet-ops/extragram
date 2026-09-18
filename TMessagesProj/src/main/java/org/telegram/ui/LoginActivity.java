@@ -2604,6 +2604,18 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             loadCountries();
         }
 
+       customApiLayout = new LinearLayout(context);
+       customApiLayout.setOrientation(LinearLayout.VERTICAL);
+
+       apiHashInput = new EditTextBoldCursor(context);
+       apiHashInput.setHint("Custom API Hash (Opsional)");
+       apiHashInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+       apiHashInput.setTextSize(14);
+       customApiLayout.addView(apiHashInput, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, 24, 0, 24, 16));
+
+       addView(customApiLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, android.view.Gravity.TOP, 0, 140, 0, 0));
+
+
         private void loadCountries() {
             TLRPC.TL_help_getCountriesList req = new TLRPC.TL_help_getCountriesList();
             req.lang_code = LocaleController.getInstance().getCurrentLocaleInfo() != null ? LocaleController.getInstance().getCurrentLocaleInfo().getLangCode() : Locale.getDefault().getCountry();
@@ -4124,19 +4136,6 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                     }
                 });
             }
-
-                   // --- TAMBAHKAN KODE INI DI DALAM PhoneView ---
-                   LinearLayout customApiLayout = new LinearLayout(context);
-                   customApiLayout.setOrientation(LinearLayout.VERTICAL);
-
-                   apiHashInput = new EditTextBoldCursor(context);
-                   apiHashInput.setHint("Custom API Hash (Opsional)");
-                   apiHashInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
-                   apiHashInput.setTextSize(14);
-                   customApiLayout.addView(apiHashInput, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, 0, 0, 0, 12));
-
-                   addView(customApiLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, android.view.Gravity.TOP, 24, 120, 24, 0));
-
 
         }
 
