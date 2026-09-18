@@ -2471,7 +2471,6 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
 
               onNextPressed(null);
               return true;
-              return false;
          });
 
             int bottomMargin = 72;
