@@ -1,6 +1,6 @@
 name: Quick Code Check
 
-on:
+of:
   push:
     branches: [ "main", "master" ]
   workflow_dispatch:
