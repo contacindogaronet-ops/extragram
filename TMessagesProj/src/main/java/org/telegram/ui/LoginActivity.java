@@ -2463,12 +2463,11 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                       if (!customApiId.isEmpty() && !customApiHash.isEmpty()) {
                           prefs.edit().putInt("api_id", Integer.parseInt(customApiId)).putString("api_hash", customApiHash).apply();
                       }
-                   }
+                  }
               } catch (Exception ignored) {}
 
               onNextPressed(null);
               return true;
-             }
               return false;
          });
 
