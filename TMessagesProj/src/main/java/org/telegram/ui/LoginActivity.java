@@ -1958,6 +1958,9 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         private AnimatedPhoneNumberEditText codeField;
         private AnimatedPhoneNumberEditText phoneField;
         private TextView titleView;
+        public EditTextBoldCursor apiIdInput;
+        public EditTextBoldCursor apiHashInput;
+        public LinearLayout customApiLayout;
         private TextViewSwitcher countryButton;
         private OutlineTextContainerView countryOutlineView;
         private OutlineTextContainerView phoneOutlineView;
@@ -2027,7 +2030,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
             titleView.setTypeface(AndroidUtilities.bold());
             titleView.setText(getString(activityMode == MODE_CHANGE_PHONE_NUMBER ? R.string.ChangePhoneNewNumber : R.string.YourNumber));
-            titleViecustomApiLayoutw.setGravity(Gravity.CENTER);
+            titleView.setGravity(Gravity.CENTER);
             titleView.setLineSpacing(dp(2), 1.0f);
             addView(titleView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 32, 0, 32, 0));
             titleView.setOnClickListener(v -> {
