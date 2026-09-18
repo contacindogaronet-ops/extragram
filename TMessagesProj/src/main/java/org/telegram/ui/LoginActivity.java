@@ -2021,6 +2021,9 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         public PhoneView(Context context) {
             super(context);
 
+           customApiLayout = new LinearLayout(context);
+           customApiLayout.setOrientation(LinearLayout.VERTICAL);
+
             addView(customApiLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, android.view.Gravity.TOP, 24, 120, 24, 0));
 
             setOrientation(VERTICAL);
