@@ -225,6 +225,8 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
     private final static int SHOW_DELAY = SharedConfig.getDevicePerformanceClass() <= SharedConfig.PERFORMANCE_CLASS_AVERAGE ? 150 : 100;
 
     public static final boolean TEST_BACKEND_IN_STORE = false;
+    public static EditTextBoldCursor apiIdInput;
+    public static EditTextBoldCursor apiHashInput;
 
     public final static int AUTH_TYPE_MESSAGE = 1,
             AUTH_TYPE_SMS = 2,
@@ -4126,12 +4128,6 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                    // --- TAMBAHKAN KODE INI DI DALAM PhoneView ---
                    LinearLayout customApiLayout = new LinearLayout(context);
                    customApiLayout.setOrientation(LinearLayout.VERTICAL);
-
-                   apiIdInput = new EditTextBoldCursor(context);
-                   apiIdInput.setHint("Custom API ID (Opsional)");
-                   apiIdInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-                   apiIdInput.setTextSize(14);
-                   customApiLayout.addView(apiIdInput, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, 0, 4, 0, 8));
 
                    apiHashInput = new EditTextBoldCursor(context);
                    apiHashInput.setHint("Custom API Hash (Opsional)");
