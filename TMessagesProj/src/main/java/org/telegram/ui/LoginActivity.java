@@ -2017,8 +2017,6 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 .show();
         }
 
-        public EditTextBoldCursor apiIdInput;
-        public EditTextBoldCursor apiHashInput;
 
         public PhoneView(Context context) {
             super(context);
