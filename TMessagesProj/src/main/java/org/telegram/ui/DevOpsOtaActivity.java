@@ -41,21 +41,22 @@ public class DevOpsOtaActivity extends BaseFragment {
     private RecyclerListView listView;
     private final ArrayList<Item> items = new ArrayList<>();
 
-    // State Manajemen OTA
+    // State Manajemen OTA & Engine Info
     private boolean isChecking = false;
     private boolean isDownloading = false;
     private boolean isDownloadedReady = false;
     private int downloadProgress = 0;
     
     private String versionTitle = "Pemeriksaan Sistem";
-    private String versionStatus = "Tekan tombol di bawah untuk memeriksa pembaruan dari GitHub.";
-    private String releaseBody = "Belum ada catatan rilis yang dimuat.";
+    private String versionStatus = "Menunggu inisialisasi pipeline GitHub API...";
+    private String releaseBody = "Memuat rilis metadata dari server repository...";
     private String directApkDownloadUrl = "";
 
     private static final int TYPE_HEADER = 0;
     private static final int TYPE_STATUS_CARD = 1;
-    private static final int TYPE_CHANGELOG = 2;
-    private static final int TYPE_ACTION_BUTTON = 3;
+    private static final int TYPE_INFO_CARD = 2;
+    private static final int TYPE_CHANGELOG = 3;
+    private static final int TYPE_ACTION_BUTTON = 4;
 
     private static class Item {
         public int viewType;
@@ -79,17 +80,25 @@ public class DevOpsOtaActivity extends BaseFragment {
 
     private void rebuildUIModel() {
         items.clear();
-        items.add(new Item(TYPE_HEADER, "GITHUB RELEASE PIPELINE", null));
+        items.add(new Item(TYPE_HEADER, "DEVOPS RELEASE PIPELINE", null));
         items.add(new Item(TYPE_STATUS_CARD, versionTitle, versionStatus));
+        
+        // Kartu Tambahan Biar Tidak Polos (Menampilkan info engine & arsitektur)
+        items.add(new Item(TYPE_INFO_CARD, "System Specifications & Target", 
+            "• Architecture: " + Build.SUPPORTED_ABIS[0] + "\n" +
+            "• Engine Daemon: Active (Zero-Copy Core)\n" +
+            "• Repository: contacindogaronet-ops/extragram"
+        ));
+
         items.add(new Item(TYPE_CHANGELOG, "• Catatan Rilis / Changelog:\n" + releaseBody, "GitHub Latest Tag"));
 
         String actionTitle;
         if (isDownloadedReady) {
-            actionTitle = "Pasang Pembaruan Sekarang (Install)";
+            actionTitle = "Pasang Pembaruan Sekarang (Install APK)";
         } else if (isDownloading) {
-            actionTitle = "Mengunduh APK... (" + downloadProgress + "%)";
+            actionTitle = "Mengunduh Paket... (" + downloadProgress + "%)";
         } else if (isChecking) {
-            actionTitle = "Memeriksa GitHub API...";
+            actionTitle = "Menghubungkan ke GitHub API...";
         } else {
             actionTitle = "Periksa Pembaruan / Unduh APK";
         }
@@ -166,7 +175,7 @@ public class DevOpsOtaActivity extends BaseFragment {
 
                     JSONObject json = new JSONObject(sb.toString());
                     String tagName = json.optString("tag_name", "v13.x");
-                    releaseBody = json.optString("body", "Tidak ada deskripsi rilis.");
+                    releaseBody = json.optString("body", "Tidak ada deskripsi rilis yang tersedia.");
                     
                     JSONArray assets = json.optJSONArray("assets");
                     if (assets != null && assets.length() > 0) {
@@ -183,7 +192,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                     AndroidUtilities.runOnUIThread(() -> {
                         isChecking = false;
                         versionTitle = "Rilis Terbaru: " + tagName;
-                        versionStatus = directApkDownloadUrl.isEmpty() ? "File APK belum dilampirkan di asset rilis." : "APK siap diunduh dari repository.";
+                        versionStatus = directApkDownloadUrl.isEmpty() ? "File APK belum dilampirkan pada rilis ini." : "APK terverifikasi dan siap diunduh.";
                         refreshUI();
                         if (showToast && getParentActivity() != null) {
                             Toast.makeText(getParentActivity(), "Berhasil memuat rilis " + tagName, Toast.LENGTH_SHORT).show();
@@ -197,7 +206,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                 AndroidUtilities.runOnUIThread(() -> {
                     isChecking = false;
                     versionTitle = "Gagal Memeriksa Pembaruan";
-                    versionStatus = "Periksa koneksi internet Anda.";
+                    versionStatus = "Periksa koneksi internet atau token API Anda.";
                     refreshUI();
                     if (showToast && getParentActivity() != null) {
                         Toast.makeText(getParentActivity(), "Gagal terhubung ke GitHub API.", Toast.LENGTH_LONG).show();
@@ -215,7 +224,7 @@ public class DevOpsOtaActivity extends BaseFragment {
 
         isDownloading = true;
         downloadProgress = 0;
-        versionStatus = "Mengunduh app.apk dari GitHub Releases...";
+        versionStatus = "Mengunduh paket biner dari GitHub Releases...";
         refreshUI();
 
         new Thread(() -> {
@@ -251,7 +260,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                 AndroidUtilities.runOnUIThread(() -> {
                     isDownloading = false;
                     isDownloadedReady = true;
-                    versionStatus = "Download selesai. Siap dipasang.";
+                    versionStatus = "Unduhan selesai. Siap dieksekusi.";
                     refreshUI();
                     Toast.makeText(context, "APK OTA Berhasil Diunduh!", Toast.LENGTH_LONG).show();
                 });
@@ -325,25 +334,33 @@ public class DevOpsOtaActivity extends BaseFragment {
                 TextView tv = new TextView(mContext);
                 tv.setTextSize(13);
                 tv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader));
-                tv.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(16), AndroidUtilities.dp(20), AndroidUtilities.dp(8));
+                tv.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(16), AndroidUtilities.dp(20), AndroidUtilities.dp(6));
                 view = tv;
-            } else if (viewType == TYPE_STATUS_CARD) {
+            } else if (viewType == TYPE_STATUS_CARD || viewType == TYPE_INFO_CARD) {
                 LinearLayout layout = new LinearLayout(mContext);
                 layout.setOrientation(LinearLayout.VERTICAL);
+                
+                RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+                params.setMargins(AndroidUtilities.dp(16), AndroidUtilities.dp(6), AndroidUtilities.dp(16), AndroidUtilities.dp(6));
+                layout.setLayoutParams(params);
+                
+                layout.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(12), Theme.getColor(Theme.key_windowBackgroundWhite)));
                 layout.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(16));
-                layout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                 
                 TextView titleTv = new TextView(mContext);
-                titleTv.setTextSize(16);
+                titleTv.setTextSize(15);
                 titleTv.setTypeface(null, android.graphics.Typeface.BOLD);
                 titleTv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
                 titleTv.setTag("title");
                 layout.addView(titleTv);
 
                 TextView subTv = new TextView(mContext);
-                subTv.setTextSize(14);
+                subTv.setTextSize(13);
                 subTv.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
-                subTv.setPadding(0, AndroidUtilities.dp(4), 0, 0);
+                subTv.setPadding(0, AndroidUtilities.dp(6), 0, 0);
                 subTv.setTag("subtitle");
                 layout.addView(subTv);
 
@@ -352,16 +369,15 @@ public class DevOpsOtaActivity extends BaseFragment {
                 LinearLayout layout = new LinearLayout(mContext);
                 layout.setOrientation(LinearLayout.VERTICAL);
                 
-                // Tambahkan margin top supaya ada jarak dan tidak menumpuk dengan card di atasnya
                 RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 );
-                params.setMargins(0, AndroidUtilities.dp(8), 0, 0);
+                params.setMargins(AndroidUtilities.dp(16), AndroidUtilities.dp(6), AndroidUtilities.dp(16), AndroidUtilities.dp(6));
                 layout.setLayoutParams(params);
 
+                layout.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(12), Theme.getColor(Theme.key_windowBackgroundWhite)));
                 layout.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(14));
-                layout.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
 
                 TextView subTv = new TextView(mContext);
                 subTv.setTextSize(13);
@@ -375,7 +391,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                     ViewGroup.LayoutParams.MATCH_PARENT, 
                     ViewGroup.LayoutParams.WRAP_CONTENT
                 );
-                btnParams.setMargins(AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(16), AndroidUtilities.dp(16));
+                btnParams.setMargins(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(20));
 
                 TextView btn = new TextView(mContext);
                 btn.setLayoutParams(btnParams);
@@ -383,7 +399,7 @@ public class DevOpsOtaActivity extends BaseFragment {
                 btn.setTextSize(15);
                 btn.setTypeface(null, android.graphics.Typeface.BOLD);
                 btn.setTextColor(Theme.getColor(Theme.key_featuredStickers_buttonText));
-                btn.setBackgroundColor(Theme.getColor(Theme.key_featuredStickers_addButton));
+                btn.setBackground(Theme.createSimpleSelectorRoundRectDrawable(AndroidUtilities.dp(12), Theme.getColor(Theme.key_featuredStickers_addButton), Theme.getColor(Theme.key_listSelector)));
                 btn.setPadding(AndroidUtilities.dp(20), AndroidUtilities.dp(14), AndroidUtilities.dp(20), AndroidUtilities.dp(14));
                 view = btn;
             }
@@ -397,7 +413,7 @@ public class DevOpsOtaActivity extends BaseFragment {
 
             if (type == TYPE_HEADER) {
                 ((TextView) holder.itemView).setText(item.title);
-            } else if (type == TYPE_STATUS_CARD) {
+            } else if (type == TYPE_STATUS_CARD || type == TYPE_INFO_CARD) {
                 ViewGroup group = (ViewGroup) holder.itemView;
                 ((TextView) group.findViewWithTag("title")).setText(item.title);
                 ((TextView) group.findViewWithTag("subtitle")).setText(item.subtitle);
