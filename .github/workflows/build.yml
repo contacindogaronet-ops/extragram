@@ -1,6 +1,6 @@
 name: Build Telegram Android Official ARM64
 
-off:
+on:
   push:
     branches:
       - main
