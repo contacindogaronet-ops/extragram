@@ -26,8 +26,30 @@ public class BuildVars {
     public static boolean NO_SCOPED_STORAGE = Build.VERSION.SDK_INT <= 29;
     public static String BUILD_VERSION_STRING = BuildConfig.BUILD_VERSION_STRING;
 
-    public static int APP_ID = 4;
-    public static String APP_HASH = "014b35b6184100b085b0d0572f9b5103";
+    public static int APP_ID = getStoredApiId();
+    public static String APP_HASH = getStoredApiHash();
+
+    private static int getStoredApiId() {
+        try {
+            if (ApplicationLoader.applicationContext != null) {
+                android.content.SharedPreferences prefs = ApplicationLoader.applicationContext.getSharedPreferences("exteragram_custom_api_prefs", android.content.Context.MODE_PRIVATE);
+                int storedId = prefs.getInt("api_id", 0);
+                if (storedId != 0) return storedId;
+          }
+       } catch (Exception ignored) {}
+       return 4; // Fallback ke default bawaan jika belum diisi
+   }
+
+    private static String getStoredApiHash() {
+        try {
+            if (ApplicationLoader.applicationContext != null) {
+                android.content.SharedPreferences prefs = ApplicationLoader.applicationContext.getSharedPreferences("exteragram_custom_api_prefs", android.content.Context.MODE_PRIVATE);
+                String storedHash = prefs.getString("api_hash", null);
+                if (storedHash != null && !storedHash.isEmpty()) return storedHash;
+            }
+        } catch (Exception ignored) {}
+        return "014b35b6184100b085b0d0572f9b5103"; // Fallback ke default bawaan jika belum diisi
+    }
 
     // SafetyNet key for Google Identity SDK, set it to empty to disable
     public static String SAFETYNET_KEY = "AIzaSyDqt8P-7F7CPCseMkOiVRgb1LY8RN1bvH8";

@@ -2012,8 +2012,13 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 .show();
         }
 
+        public EditTextBoldCursor apiIdInput;
+        public EditTextBoldCursor apiHashInput;
+
         public PhoneView(Context context) {
             super(context);
+
+            addView(customApiLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, android.view.Gravity.TOP, 24, 120, 24, 0));
 
             setOrientation(VERTICAL);
             setGravity(Gravity.CENTER);
@@ -2022,7 +2027,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
             titleView.setTypeface(AndroidUtilities.bold());
             titleView.setText(getString(activityMode == MODE_CHANGE_PHONE_NUMBER ? R.string.ChangePhoneNewNumber : R.string.YourNumber));
-            titleView.setGravity(Gravity.CENTER);
+            titleViecustomApiLayoutw.setGravity(Gravity.CENTER);
             titleView.setLineSpacing(dp(2), 1.0f);
             addView(titleView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL, 32, 0, 32, 0));
             titleView.setOnClickListener(v -> {
@@ -2448,11 +2453,24 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                         phoneNumberConfirmView.fabButton.callOnClick();
                         return true;
                     }
-                    onNextPressed(null);
-                    return true;
-                }
-                return false;
-            });
+               }
+
+               try {
+                   android.content.SharedPreferences prefs = org.telegram.messenger.ApplicationLoader.applicationContext.getSharedPreferences("exteragram_custom_api_prefs", android.content.Context.MODE_PRIVATE);
+                   if (apiIdInput != null && apiHashInput != null) {
+                      String customApiId = apiIdInput.getText().toString().trim();
+                      String customApiHash = apiHashInput.getText().toString().trim();
+                      if (!customApiId.isEmpty() && !customApiHash.isEmpty()) {
+                          prefs.edit().putInt("api_id", Integer.parseInt(customApiId)).putString("api_hash", customApiHash).apply();
+                      }
+                   }
+              } catch (Exception ignored) {}
+
+              onNextPressed(null);
+              return true;
+             }
+              return false;
+         });
 
             int bottomMargin = 72;
             if (newAccount && activityMode == MODE_LOGIN) {
@@ -4102,6 +4120,26 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                     }
                 });
             }
+
+                   // --- TAMBAHKAN KODE INI DI DALAM PhoneView ---
+                   LinearLayout customApiLayout = new LinearLayout(context);
+                   customApiLayout.setOrientation(LinearLayout.VERTICAL);
+
+                   apiIdInput = new EditTextBoldCursor(context);
+                   apiIdInput.setHint("Custom API ID (Opsional)");
+                   apiIdInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+                   apiIdInput.setTextSize(14);
+                   customApiLayout.addView(apiIdInput, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, 0, 4, 0, 8));
+
+                   apiHashInput = new EditTextBoldCursor(context);
+                   apiHashInput.setHint("Custom API Hash (Opsional)");
+                   apiHashInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+                   apiHashInput.setTextSize(14);
+                   customApiLayout.addView(apiHashInput, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 40, 0, 0, 0, 12));
+
+                   addView(customApiLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, android.view.Gravity.TOP, 24, 120, 24, 0));
+
+
         }
 
         @Override
